@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "es2018",
+    "module": "commonjs", // Or keep "esnext" if all your environments support ES Modules
     "lib": [
       "dom",
       "dom.iterable",
@@ -13,14 +14,13 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "module": "esnext",
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
+    "noEmit": true, // Consider setting this to false if you want TypeScript to output .js files
     "jsx": "react-jsx"
   },
   "include": [
-    "src"
+    "src/**/*" // Make sure to include backend and frontend files
   ]
 }
