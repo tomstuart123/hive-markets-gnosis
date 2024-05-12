@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
+
 // Define the interface for the submission
 interface Submission {
   id: string;
@@ -12,7 +13,15 @@ interface Submission {
   votes: number;
 }
 
-const NextWeek = () => {
+interface NextWeekProps {
+  ready: boolean;
+  authenticated: boolean;
+  user: any;  // Specify a more precise type if possible
+  login: () => void;
+  logout: () => void;
+}
+
+const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, logout }) => {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [newSubmission, setNewSubmission] = useState({
     title: '',
@@ -23,6 +32,9 @@ const NextWeek = () => {
   });
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const disableLogin = !ready || authenticated;
+  const disableLogout = !ready || (ready && !authenticated);
+
 
   useEffect(() => {
     fetchSubmissions();
@@ -101,6 +113,12 @@ const NextWeek = () => {
           </li>
         ))}
       </ul>
+      <button disabled={disableLogin} onClick={login}>
+      Log in
+      </button>
+      <button disabled={disableLogout} onClick={logout}>
+      Log out
+      </button>
     </div>
   );
 };

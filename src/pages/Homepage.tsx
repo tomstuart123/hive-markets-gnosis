@@ -12,6 +12,7 @@ interface Market {
   };
 }
 
+
 interface TimePeriod {
   startTime: Date;
   endTime: Date;
