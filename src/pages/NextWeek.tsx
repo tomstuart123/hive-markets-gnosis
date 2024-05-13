@@ -23,13 +23,7 @@ interface NextWeekProps {
 
 const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, logout }) => {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [newSubmission, setNewSubmission] = useState({
-    title: '',
-    question: '',
-    outcomes: [],
-    source: '',
-    endTime: ''
-  });
+  const [newSubmission, setNewSubmission] = useState({title: '',question: '',outcomes: [],source: '', endTime: ''});
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const disableLogin = !ready || authenticated;
@@ -79,6 +73,10 @@ const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, 
   };
 
   const handleVote = async (id: string) => {
+    if (!authenticated) {
+      console.log('Please log in to vote');
+      return; // Prevent voting if not authenticated
+    }
     setIsLoading(true);
     try {
       const response = await axios.post('http://localhost:3001/api/vote', { submissionId: id });
@@ -109,7 +107,11 @@ const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, 
         {submissions.map((submission) => (
           <li key={submission.id}>
             {submission.title} - Votes: {submission.votes}
-            <button onClick={() => handleVote(submission.id)}>Vote</button>
+            {authenticated ? (
+              <button onClick={() => handleVote(submission.id)}>Vote</button>
+            ) : (
+              <button onClick={login}>Log in to Vote</button>
+              )}          
           </li>
         ))}
       </ul>

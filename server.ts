@@ -32,29 +32,29 @@ let liveMarket: LiveMarket | null = null;
 
 // Simulated function to determine the contest period
 const isSubmissionPeriod = (): boolean => {
+  //creates a new Date object representing the current date and time.
   const now = new Date();
+  //This retrieves the day of the week in UTC time, where 0 is Sunday, 1 is Monday, and so on up to 6 which is Saturday.
   const day = now.getUTCDay();
+  //This retrieves the hour of the day in UTC time, from 0 (midnight) to 23 (11 PM).
   const hour = now.getUTCHours();
-  console.log(1 && day <= 6 && hour >= 0 && hour <= 23);
   // Assuming the submission period is from Monday 00:00 UTC to Sunday 23:59 UTC
-  return day >= 1 && day <= 6 && hour >= 0 && hour <= 23;
-  // when testing this only keeps the period open from 2-3 every day
-  // return day >= 1 && day <= 6 && hour >= 14 && hour < 15;
-
+  return day >= 0 && day <= 6 && hour >= 0 && hour <= 23;
+  // when testing a specific hour, use return day >= 0 && day <= 6 && hour >= 14 && hour < 15;
 };
 
 // Define routes
 app.get('/api/submissions', (req: Request, res: Response) => {
-  // if (!isSubmissionPeriod()) {
-  //   return res.status(403).json({ message: 'Submission period is closed' });
-  // }
+  if (!isSubmissionPeriod()) {
+    return res.status(403).json({ message: 'Submission period is closed' });
+  }
   res.json(submissions);
 });
 
 app.post('/api/submissions', (req: Request, res: Response) => {
-  // if (!isSubmissionPeriod()) {
-  //   return res.status(403).json({ message: 'Submission period is closed' });
-  // }
+  if (!isSubmissionPeriod()) {
+    return res.status(403).json({ message: 'Submission period is closed' });
+  }
   const { title, question, outcomes, source, endTime } = req.body;
   const newSubmission: Submission = {
     id: uuidv4(),
