@@ -12,6 +12,11 @@
 **Today's Progress**:: I noticed yesterday that the submission period check (which was meant to be open all week), wasn't working on Sundays yesterday. I fixed it by working out that JS starts Sundays at zero (to saturday's 6) instead of Monday's at zero. Once adjusted, it worked. I then moved back to privy and specificially the 'authenticated' option. I added an IF statement
 **Thoughts:** - Privy is great. 
 
+### Day3
+**Today's Progress**:: mostly back and forth with gpt on the best way to run the voting component of submissions; onchain or offchain. The hypothesis for now is a hybrid approach. Vote power is calculated via a smart contract based on tokens in a wallet. Vote tallying & result itself is via our server due to our requirement to have a centralised veto for now. We can transfer this to onchain vote plus multisig veto later... but lets not deal with gas and robustness problems right now.After this decision, I looked for a very basic vote power snapshot contract on base sepolia but couldn't find one. So for now I'll write my own. I then spent the rest of my time, setting up my environment for contract work. That took ages. Just in 5 mins I took a template of the votepower.sol contract and deploy.js gpt gave me and shoved it in. I'll pick up reviewing these tomorrow
+**Thoughts:** - Dev environment versioning sucks... but gpt does get there in the end. I'm not entirely happy using my own voting snapshot contract. this must exist already on base sepolia so will keep searching
+**Thoughts:**
+
 
 TO DO IDEAS:
 Essentials for Later Development
@@ -19,9 +24,7 @@ Persistent Data Storage:
 Database Integration: Replace the in-memory storage with a database like MongoDB, PostgreSQL, or similar. This will ensure that your data persists across server restarts and can be scaled as your application grows.
 Data Models: Define robust data models/schema for submissions and votes. This helps in managing and querying data more efficiently.
 Authentication and Authorization:
-Wallet Integration: Since you’re using Web3 modal for authentication, ensure that the wallet integration is secure and efficient.
-User Authentication: Securely authenticate users based on their wallet addresses and potentially add a second layer of verification if necessary.
-Error Handling and Validation:
+Allow vote power based on onchain tokens in embedded or EOA wallet
 Robust Error Handling: Implement comprehensive error handling in the backend to manage and respond to errors gracefully.
 Data Validation: Validate incoming data to prevent incorrect or malicious data from being processed.
 Nice-to-Haves for Enhanced Functionality

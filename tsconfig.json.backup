@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "target": "es2020", 
-    "module": "commonjs",
+    "target": "es2018",
+    "module": "commonjs", // Or keep "esnext" if all your environments support ES Modules
     "lib": [
       "dom",
       "dom.iterable",
@@ -17,12 +17,10 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true, 
+    "noEmit": true, // Consider setting this to false if you want TypeScript to output .js files
     "jsx": "react-jsx"
   },
   "include": [
-    "src/**/*", 
-    "scripts",  
-    "test"      
+    "src/**/*" // Make sure to include backend and frontend files
   ]
 }
