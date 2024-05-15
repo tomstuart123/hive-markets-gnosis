@@ -15,7 +15,10 @@
 ### Day3
 **Today's Progress**:: mostly back and forth with gpt on the best way to run the voting component of submissions; onchain or offchain. The hypothesis for now is a hybrid approach. Vote power is calculated via a smart contract based on tokens in a wallet. Vote tallying & result itself is via our server due to our requirement to have a centralised veto for now. We can transfer this to onchain vote plus multisig veto later... but lets not deal with gas and robustness problems right now.After this decision, I looked for a very basic vote power snapshot contract on base sepolia but couldn't find one. So for now I'll write my own. I then spent the rest of my time, setting up my environment for contract work. That took ages. Just in 5 mins I took a template of the votepower.sol contract and deploy.js gpt gave me and shoved it in. I'll pick up reviewing these tomorrow
 **Thoughts:** - Dev environment versioning sucks... but gpt does get there in the end. I'm not entirely happy using my own voting snapshot contract. this must exist already on base sepolia so will keep searching
-**Thoughts:**
+
+### Day4
+**Today's Progress**:: went back through the templates of votepower.sol / deploy.js. Commented up to make sure I understand it fully. I then tried to test the contracts via command line/hardhat... kept getting an error ('TypeError: votePower.deployed is not a function'). No solution yet
+**Thoughts:** - 
 
 
 TO DO IDEAS:
