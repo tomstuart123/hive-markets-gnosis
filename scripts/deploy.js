@@ -3,14 +3,18 @@ async function main() {
     console.log("Deploying contracts with the account:", deployer.address);
     // Replace with your ERC20 token contract address
     const TokenAddress = "0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed"; 
-    const VotePower = await ethers.getContractFactory("VotePower");
-    // deploy it onchain with token address as input
-    const votePower = await VotePower.deploy(TokenAddress);
+    // const VotePower = await ethers.getContractFactory("VotePower");
+    // deploy it onchain with token address as input. not this is updated from getcontractfactory due to ethersv6+
+    console.log("Deploying VotePower contract...");
+
+    const votePower = await ethers.deployContract("VotePower", [TokenAddress]);
   
+
     // Wait for the deployment onchain
-    await votePower.deployed();
-  
-    console.log("VotePower contract deployed to:", votePower.address);
+    // await votePower.deployed();
+    // ethers6 updated way
+    await votePower.waitForDeployment();
+    console.log("VotePower contract deployed to:", votePower.target);
   }
   
   //execute deploy.js
