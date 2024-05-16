@@ -2,7 +2,7 @@ async function main() {
     const [deployer] = await ethers.getSigners();
     console.log("Deploying contracts with the account:", deployer.address);
     // Replace with your ERC20 token contract address
-    const TokenAddress = "0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed"; 
+    const TokenAddress = "0x0a5730C865a1804e773FF5cF864862301f0Cef41"; 
     // const VotePower = await ethers.getContractFactory("VotePower");
     // deploy it onchain with token address as input. not this is updated from getcontractfactory due to ethersv6+
     console.log("Deploying VotePower contract...");

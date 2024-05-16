@@ -20,6 +20,10 @@
 **Today's Progress**:: went back through the templates of votepower.sol / deploy.js. Commented up to make sure I understand it fully. I then tried to test the contracts via command line/hardhat... kept getting an error ('TypeError: votePower.deployed is not a function'). No solution yet. UPDATE - founda  solution. It was due to ethers6 updating how we call stuff (e.g not contract factory). updates made to deploy.js to adjust. Was able too deploy and then check vote power on an address (yay)
 **Thoughts:** - hardhat is tricky... but helpful. 
 
+### Day5
+**Today's Progress**:: swapped out degen - which I had zero vote power - for a sepolia erc-20 token that I deployed. Added code to my server.ts to grab the users vote power . Server runs but fails in the front-end. Hard to test with postman too as need a wallet. Will implement front-end code before testing. 
+**Thoughts:** - 
+
 
 TO DO IDEAS:
 Essentials for Later Development

@@ -1,6 +1,8 @@
 import express, { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import cors from 'cors';
+import { ethers } from "ethers";
+
 // import cron from 'node-cron';
 
 
@@ -30,6 +32,15 @@ interface LiveMarket extends Submission {
 let submissions: Submission[] = [];
 let liveMarket: LiveMarket | null = null;
 
+// Ethers.js setup
+const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_API_URL);
+const votePowerContractAddress = "0x2eDc634717873AF7f440CDBa719184D8Dc5386FD"; // Replace with your deployed contract address
+const votePowerABI = [
+  // ABI for the getVotePower function
+  "function getVotePower(address account) view returns (uint256)"
+];
+const votePowerContract = new ethers.Contract(votePowerContractAddress, votePowerABI, provider);
+
 // Simulated function to determine the contest period
 const isSubmissionPeriod = (): boolean => {
   //creates a new Date object representing the current date and time.
@@ -41,6 +52,11 @@ const isSubmissionPeriod = (): boolean => {
   // Assuming the submission period is from Monday 00:00 UTC to Sunday 23:59 UTC
   return day >= 0 && day <= 6 && hour >= 0 && hour <= 23;
   // when testing a specific hour, use return day >= 0 && day <= 6 && hour >= 14 && hour < 15;
+};
+
+const getVotePower = async (account: string): Promise<number> => {
+  const votePower = await votePowerContract.getVotePower(account);
+  return votePower.toNumber();
 };
 
 // Define routes
@@ -70,15 +86,20 @@ app.post('/api/submissions', (req: Request, res: Response) => {
 });
 
 
-app.post('/api/vote', (req: Request, res: Response) => {
+app.post('/api/vote', async (req: Request, res: Response) => {
   if (!isSubmissionPeriod()) {
     return res.status(403).json({ message: 'Voting period is closed' });
   }
-  const { submissionId } = req.body;
+  const { submissionId, walletAddress } = req.body;
   const submission = submissions.find(sub => sub.id === submissionId);
   if (submission) {
-    submission.votes++;
-    res.json({ message: "Vote recorded", submission });
+    try {
+      const votePower = await getVotePower(walletAddress);
+      submission.votes += votePower;
+      res.json({ message: "Vote recorded", submission });
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching vote power", error });
+    }
   } else {
     res.status(404).json({ message: "Submission not found" });
   }
