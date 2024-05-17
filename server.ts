@@ -2,9 +2,9 @@ import express, { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import cors from 'cors';
 import { ethers } from "ethers";
+import dotenv from 'dotenv';
 
-// import cron from 'node-cron';
-
+dotenv.config();
 
 const app = express();
 const PORT = 3001;
@@ -34,7 +34,7 @@ let liveMarket: LiveMarket | null = null;
 
 // Ethers.js setup
 const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_API_URL);
-const votePowerContractAddress = "0x2eDc634717873AF7f440CDBa719184D8Dc5386FD"; // Replace with your deployed contract address
+const votePowerContractAddress = "0xd256EBF2Ca9428D8eF43Afe07dF24c9744cAcE3a"; // Replace with your deployed contract address
 const votePowerABI = [
   // ABI for the getVotePower function
   "function getVotePower(address account) view returns (uint256)"
@@ -43,18 +43,17 @@ const votePowerContract = new ethers.Contract(votePowerContractAddress, votePowe
 
 // Simulated function to determine the contest period
 const isSubmissionPeriod = (): boolean => {
-  //creates a new Date object representing the current date and time.
   const now = new Date();
-  //This retrieves the day of the week in UTC time, where 0 is Sunday, 1 is Monday, and so on up to 6 which is Saturday.
   const day = now.getUTCDay();
-  //This retrieves the hour of the day in UTC time, from 0 (midnight) to 23 (11 PM).
   const hour = now.getUTCHours();
-  // Assuming the submission period is from Monday 00:00 UTC to Sunday 23:59 UTC
   return day >= 0 && day <= 6 && hour >= 0 && hour <= 23;
-  // when testing a specific hour, use return day >= 0 && day <= 6 && hour >= 14 && hour < 15;
 };
 
+// Function to get vote power from the contract
 const getVotePower = async (account: string): Promise<number> => {
+  if (!ethers.isAddress(account)) {
+    throw new Error("Invalid Ethereum address");
+  }
   const votePower = await votePowerContract.getVotePower(account);
   return votePower.toNumber();
 };
@@ -85,12 +84,12 @@ app.post('/api/submissions', (req: Request, res: Response) => {
   res.status(201).json(newSubmission);
 });
 
-
 app.post('/api/vote', async (req: Request, res: Response) => {
   if (!isSubmissionPeriod()) {
     return res.status(403).json({ message: 'Voting period is closed' });
   }
   const { submissionId, walletAddress } = req.body;
+  console.log(`Vote request received for submissionId: ${submissionId}, walletAddress: ${walletAddress}`);
   const submission = submissions.find(sub => sub.id === submissionId);
   if (submission) {
     try {
@@ -98,10 +97,22 @@ app.post('/api/vote', async (req: Request, res: Response) => {
       submission.votes += votePower;
       res.json({ message: "Vote recorded", submission });
     } catch (error) {
+      console.error("Error fetching vote power:", error);
       res.status(500).json({ message: "Error fetching vote power", error });
     }
   } else {
     res.status(404).json({ message: "Submission not found" });
+  }
+});
+
+app.get('/api/vote-power/:walletAddress', async (req: Request, res: Response) => {
+  const { walletAddress } = req.params;
+  try {
+    const votePower = await getVotePower(walletAddress);
+    res.json({ votePower });
+  } catch (error) {
+    console.error("Error fetching vote power:", error);
+    res.status(500).json({ message: "Error fetching vote power", error });
   }
 });
 
@@ -125,29 +136,10 @@ app.post('/api/reset', (req: Request, res: Response) => {
   if (submissions.length === 0) {
     return res.status(404).json({ message: "No submissions to reset." });
   }
-  // note currently if two submissions have the same votes, the winner will be the most recent one in the array
   const winner = submissions.reduce((a, b) => (a.votes > b.votes ? a : b));
   submissions = []; // Clear submissions for a new contest cycle
   res.json({ message: "Submissions have been reset.", winner });
 });
-
-// NOT REQUIRED UNLESS I WANT TO SET MARKET MANUALLY WITHOUT RESET
-// Endpoint to set the live market from the winning submission
-// app.post('/api/set-live-market', (req: Request, res: Response) => {
-//   if (submissions.length === 0) {
-//       return res.status(404).json({ message: "No submissions available to set as a live market." });
-//   }
-//   const winningSubmission = submissions.reduce((prev, current) => (prev.votes > current.votes ? prev : current));
-//   liveMarket = {
-//       ...winningSubmission,
-//       trading: {
-//           yes: 0.5,  // Example initial trading value
-//           no: 0.5    // Example initial trading value
-//       }
-//   };
-//   submissions = [];  // Optionally reset submissions for the next contest
-//   res.status(201).json(liveMarket);
-// });
 
 // Endpoint to get the current live market
 app.get('/api/live-market', (req: Request, res: Response) => {
@@ -157,8 +149,6 @@ app.get('/api/live-market', (req: Request, res: Response) => {
       res.status(404).json({ message: "No live market set" });
   }
 });
-
-
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

@@ -26,6 +26,7 @@ const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, 
   const [newSubmission, setNewSubmission] = useState({title: '',question: '',outcomes: [],source: '', endTime: ''});
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [votePower, setVotePower] = useState<number | null>(null); // State to store vote power
   const disableLogin = !ready || authenticated;
   const disableLogout = !ready || (ready && !authenticated);
 
@@ -33,6 +34,12 @@ const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, 
   useEffect(() => {
     fetchSubmissions();
   }, []);
+
+  // useEffect(() => {
+  //   if (authenticated && user) {
+  //     fetchVotePower(user.walletAddress); // Fetch vote power if authenticated
+  //   }
+  // }, [authenticated, user]);
 
    const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setNewSubmission({
@@ -54,6 +61,15 @@ const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, 
     }
   };
   
+  // const fetchVotePower = async (walletAddress: string) => {
+  //   try {
+  //     const response = await axios.get(`http://localhost:3001/api/vote-power/${walletAddress}`);
+  //     setVotePower(response.data.votePower);
+  //   } catch (err) {
+  //     console.error('Error fetching vote power:', err);
+  //     setError('Failed to fetch vote power');
+  //   }
+  // };
 
   const handleAddSubmission = async () => {
     if (!newSubmission.title || !newSubmission.question) {
@@ -72,14 +88,17 @@ const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, 
     }
   };
 
-  const handleVote = async (id: string) => {
+   const handleVote = async (id: string) => {
     if (!authenticated) {
       console.log('Please log in to vote');
       return; // Prevent voting if not authenticated
     }
     setIsLoading(true);
     try {
-      const response = await axios.post('http://localhost:3001/api/vote', { submissionId: id });
+      const response = await axios.post('http://localhost:3001/api/vote', {
+        submissionId: id,
+        walletAddress: user.walletAddress // Include wallet address in the request
+      });
       fetchSubmissions(); // Re-fetch submissions to update the vote count
     } catch (err) {
       setError(`Failed to vote on submission ${id}`);
@@ -87,13 +106,13 @@ const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, 
       setIsLoading(false);
     }
   };
-
   if (isLoading) return <p>Loading...</p>;
   if (error) return <p>Error: {error}</p>;
 
   return (
     <div>
       <h1>Next Week's Contest Submissions</h1>
+      {/* {votePower !== null && <p>Your Vote Power: {votePower}</p>} Display vote power */}
       {isLoading && <p>Loading...</p>}
       {error && <p>{error}</p>}
       <div>

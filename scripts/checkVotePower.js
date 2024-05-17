@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 
 async function main() {
   // input contract address where deployed
-  const contractAddress = "0x06EcA1325f75635051D54833ec630A1250C5074d"; // Replace with your deployed contract address
+  const contractAddress = "0xa7DE4cBB768A493EF282f9131A05e90A91D4f984"; // Replace with your deployed contract address
 
   // Get the contract factory for the VotePower contract
   const VotePower = await ethers.getContractFactory("VotePower");
