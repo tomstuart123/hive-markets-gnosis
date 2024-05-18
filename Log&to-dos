@@ -24,6 +24,13 @@
 **Today's Progress**:: swapped out degen - which I had zero vote power - for a sepolia erc-20 token that I deployed. Added code to my server.ts to grab the users vote power . Server runs but fails in the front-end. Hard to test with postman too as need a wallet. Will implement front-end code before testing. 
 **Thoughts:** - 
 
+### Day6
+**Today's Progress**:: should have stayed in the backend. Tonne of errors. Givev up until tomorrow
+
+### Day7
+**Today's Progress**:: fixed the backend issues. It was a mixture of there being no ABI input, the alchemykey not being called from dotenv correctly, the getVotePower function not storing data as the right combinations of string/number/big number etc. Once I did these changes it worked. however, I realised the vote power can be used continually to vote. I then added backend functionality to only let a wallet vote once in a set period. This will do for now (though note that when the token is transferable, this won't work as they can just move the vote power to a different address). The front-end now also got updated to send a nice notification if they try and vote twice (before the app just crashed)
+**Thoughts:** - lesson here is not just to try and do all the backend, frontend code all at once and then debug. A lot easier to just do it piece by piece and track errors as I go. 
+
 
 TO DO IDEAS:
 Essentials for Later Development

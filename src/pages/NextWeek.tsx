@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 
 // Define the interface for the submission
@@ -25,6 +25,7 @@ const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, 
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [newSubmission, setNewSubmission] = useState({title: '',question: '',outcomes: [],source: '', endTime: ''});
   const [error, setError] = useState<string>('');
+  const [voteMessage, setVoteMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [votePower, setVotePower] = useState<number | null>(null); // State to store vote power
   const disableLogin = !ready || authenticated;
@@ -35,11 +36,13 @@ const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, 
     fetchSubmissions();
   }, []);
 
-  // useEffect(() => {
-  //   if (authenticated && user) {
-  //     fetchVotePower(user.walletAddress); // Fetch vote power if authenticated
-  //   }
-  // }, [authenticated, user]);
+  useEffect(() => {
+    if (authenticated && user) {
+      console.log('User object:', user);
+      console.log('Fetching vote power for wallet address:', user?.wallet?.address);
+      fetchVotePower(user?.wallet?.address); // Fetch vote power if authenticated
+    }
+  }, [authenticated, user]);
 
    const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setNewSubmission({
@@ -61,15 +64,15 @@ const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, 
     }
   };
   
-  // const fetchVotePower = async (walletAddress: string) => {
-  //   try {
-  //     const response = await axios.get(`http://localhost:3001/api/vote-power/${walletAddress}`);
-  //     setVotePower(response.data.votePower);
-  //   } catch (err) {
-  //     console.error('Error fetching vote power:', err);
-  //     setError('Failed to fetch vote power');
-  //   }
-  // };
+  const fetchVotePower = async (walletAddress: string) => {
+    try {
+      const response = await axios.get(`http://localhost:3001/api/vote-power/${walletAddress}`);
+      setVotePower(response.data.votePower);
+    } catch (err) {
+      console.error('Error fetching vote power:', err);
+      setError('Failed to fetch vote power');
+    }
+  };
 
   const handleAddSubmission = async () => {
     if (!newSubmission.title || !newSubmission.question) {
@@ -88,7 +91,7 @@ const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, 
     }
   };
 
-   const handleVote = async (id: string) => {
+  const handleVote = async (id: string) => {
     if (!authenticated) {
       console.log('Please log in to vote');
       return; // Prevent voting if not authenticated
@@ -97,22 +100,31 @@ const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, 
     try {
       const response = await axios.post('http://localhost:3001/api/vote', {
         submissionId: id,
-        walletAddress: user.walletAddress // Include wallet address in the request
+        walletAddress: user?.wallet?.address // Include wallet address in the request
       });
       fetchSubmissions(); // Re-fetch submissions to update the vote count
+      setVoteMessage('Vote recorded successfully!');
     } catch (err) {
-      setError(`Failed to vote on submission ${id}`);
+      const error = err as AxiosError;
+      if (error.response && error.response.status === 403) {
+        setVoteMessage('You have already used your vote power for this period. It will refresh at the end of the vote period.');
+      } else {
+        setError(`Failed to vote on submission ${id}`);
+      }
     } finally {
       setIsLoading(false);
+      setTimeout(() => setVoteMessage(''), 5000); // Clear the message after 5 seconds
     }
   };
+
   if (isLoading) return <p>Loading...</p>;
   if (error) return <p>Error: {error}</p>;
 
   return (
     <div>
       <h1>Next Week's Contest Submissions</h1>
-      {/* {votePower !== null && <p>Your Vote Power: {votePower}</p>} Display vote power */}
+      {votePower !== null && <p>Your Vote Power: {votePower}</p>} Display vote power
+      {voteMessage && <p>{voteMessage}</p>} {/* Display vote message */}
       {isLoading && <p>Loading...</p>}
       {error && <p>{error}</p>}
       <div>
