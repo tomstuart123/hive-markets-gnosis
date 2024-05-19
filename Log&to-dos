@@ -31,6 +31,10 @@
 **Today's Progress**:: fixed the backend issues. It was a mixture of there being no ABI input, the alchemykey not being called from dotenv correctly, the getVotePower function not storing data as the right combinations of string/number/big number etc. Once I did these changes it worked. however, I realised the vote power can be used continually to vote. I then added backend functionality to only let a wallet vote once in a set period. This will do for now (though note that when the token is transferable, this won't work as they can just move the vote power to a different address). The front-end now also got updated to send a nice notification if they try and vote twice (before the app just crashed)
 **Thoughts:** - lesson here is not just to try and do all the backend, frontend code all at once and then debug. A lot easier to just do it piece by piece and track errors as I go. 
 
+### Day8
+**Today's Progress**: set up routers so we can move to a multipage site. Updated the homepage.tsx to work with our backend (i.e. display a 'no market live yet message', then receive a title for a proxy, voted on prediction market from the nextweek page, display that title once its chosen). Now will spend the rest of the day deciding how to do the prediction market aspect (onchain, offchain, hybrid). 
+**Thoughts:** - this isn't going to be easy
+
 
 TO DO IDEAS:
 Essentials for Later Development

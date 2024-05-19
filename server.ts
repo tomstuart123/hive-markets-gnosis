@@ -146,9 +146,9 @@ app.get('/api/vote-power/:walletAddress', async (req: Request, res: Response) =>
 
 // Endpoint to determine and fetch the current winner
 app.get('/api/winner', (req: Request, res: Response) => {
-  if (isSubmissionPeriod()) {
-    return res.status(403).json({ message: 'Cannot fetch winner during submission period' });
-  }
+  // if (isSubmissionPeriod()) {
+  //   return res.status(403).json({ message: 'Cannot fetch winner during submission period' });
+  // }
   if (submissions.length === 0) {
     return res.status(404).json({ message: "No submissions available." });
   }
@@ -156,38 +156,26 @@ app.get('/api/winner', (req: Request, res: Response) => {
   res.json(winner);
 });
 
-// Endpoint to reset the contest state and set the live market
-app.post('/api/reset', (req: Request, res: Response) => {
-  if (isSubmissionPeriod()) {
-    return res.status(403).json({ message: 'Cannot reset during submission period' });
-  }
-  if (submissions.length === 0) {
-    return res.status(404).json({ message: "No submissions to reset." });
-  }
-  // note currently if two submissions have the same votes, the winner will be the most recent one in the array
-  const winner = submissions.reduce((a, b) => (a.votes > b.votes ? a : b));
-  submissions = []; // Clear submissions for a new contest cycle
-  resetVotes();
-  res.json({ message: "Submissions have been reset.", winner });
-});
-
-// NOT REQUIRED UNLESS I WANT TO SET MARKET MANUALLY WITHOUT RESET
 // Endpoint to set the live market from the winning submission
-// app.post('/api/set-live-market', (req: Request, res: Response) => {
-//   if (submissions.length === 0) {
-//       return res.status(404).json({ message: "No submissions available to set as a live market." });
-//   }
-//   const winningSubmission = submissions.reduce((prev, current) => (prev.votes > current.votes ? prev : current));
-//   liveMarket = {
-//       ...winningSubmission,
-//       trading: {
-//           yes: 0.5,  // Example initial trading value
-//           no: 0.5    // Example initial trading value
-//       }
-//   };
-//   submissions = [];  // Optionally reset submissions for the next contest
-//   res.status(201).json(liveMarket);
-// });
+app.post('/api/set-live-market', (req: Request, res: Response) => {
+  // if (isSubmissionPeriod()) {
+  //   return res.status(403).json({ message: 'Cannot reset during submission period' });
+  // }
+  if (submissions.length === 0) {
+      return res.status(404).json({ message: "No submissions available to set as a live market." });
+  }
+  const winningSubmission = submissions.reduce((prev, current) => (prev.votes > current.votes ? prev : current));
+  liveMarket = {
+      ...winningSubmission,
+      trading: {
+          yes: 0.5,  // Example initial trading value
+          no: 0.5    // Example initial trading value
+      }
+  };
+  submissions = [];  // Optionally reset submissions for the next contest
+  resetVotes();
+  res.status(201).json(liveMarket);
+});
 
 // Endpoint to get the current live market
 app.get('/api/live-market', (req: Request, res: Response) => {
