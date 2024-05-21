@@ -37,7 +37,10 @@
 
 ### Day9
 **Today's Progress**: spent the day in research with gpt instead of implementation. In short, no point me going further with the front-end / databasing until I know how i'm doing the hardest part. The prediction market itself. It seems Omen (gnosis) does onchain AMM market, offchain matching, onchain trading of shares as 1155s, onchain execution. It seems polymarket, does offchain market, offchain matching and trading of shares onchain. I got some templates generated for how to do the making with smart contracts, the matching with a server and the trading onchain. I'll ask for some advice today and then implement tomorrow.
-**Thoughts:** - This is getting very deep. Might try and get some advice before I pick a path 
+**Thoughts:** - This is getting very deep. Might try and get some advice before I pick a path
+### Day10
+**Today's Progress**: leaving the homepage prediction market for now. Gonna get some advice on it first. For now, I'm going to setup the database so the data for submissions at least is persistent. Decided on using mongodb mostly as it uses json which is easier for me to pick up than postgresql. I imported mongoose. set my dotenv variables and then connected successfully to mongo in my server. I also then pasted some templates for making my get / post submissions working in mongo. They worked for storing and posting from postman... BUT the votign and setting live market now failed. Something to do with the ID changing (the id changed location in the api's deliverable. This probably just needs some tweaks to the vote/reset functions)
+**Thoughts:** - databasing seemed easy for submissions. Again most worried for when this scales up to the prediction market/order matching. Onchain might be better
 
 
 TO DO IDEAS:

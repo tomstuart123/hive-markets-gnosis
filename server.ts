@@ -6,17 +6,26 @@ import cors from 'cors';
 import { ethers } from "ethers";
 import dotenv from "dotenv";
 import VotePowerArtifact from './artifacts/contracts/votepower.sol/VotePower.json'; // Import the JSON file
+import mongoose from 'mongoose';
+import Submission from './models/Submission'; // Import the Submission model
+
 
 dotenv.config(); // Ensure this is called to load .env variables
-
-// import cron from 'node-cron';
-
 
 const app = express();
 const PORT = 3001;
 
 app.use(cors());
 app.use(express.json());
+
+
+mongoose.connect(process.env.MONGO_URI!, {})
+  .then(() => {
+    console.log('Connected to MongoDB');
+  })
+  .catch(err => {
+    console.error('Failed to connect to MongoDB', err);
+});
 
 interface Submission {
   id: string;
@@ -87,6 +96,18 @@ app.get('/api/submissions', (req: Request, res: Response) => {
   res.json(submissions);
 });
 
+// app.get('/api/submissions', async (req: Request, res: Response) => {
+//   if (!isSubmissionPeriod()) {
+//     return res.status(403).json({ message: 'Submission period is closed' });
+//   }
+//   try {
+//     const submissions = await Submission.find(); // FETCH SUBMISSIONS FROM MONGODB
+//     res.json(submissions);
+//   } catch (err) {
+//     res.status(500).json({ message: 'Error fetching submissions', error: err });
+//   }
+// });
+
 app.post('/api/submissions', (req: Request, res: Response) => {
   if (!isSubmissionPeriod()) {
     return res.status(403).json({ message: 'Submission period is closed' });
@@ -104,6 +125,27 @@ app.post('/api/submissions', (req: Request, res: Response) => {
   submissions.push(newSubmission);
   res.status(201).json(newSubmission);
 });
+
+// app.post('/api/submissions', async (req: Request, res: Response) => {
+//   if (!isSubmissionPeriod()) {
+//     return res.status(403).json({ message: 'Submission period is closed' });
+//   }
+//   const { title, question, outcomes, source, endTime } = req.body;
+//   const newSubmission = new Submission({
+//     title,
+//     question,
+//     outcomes,
+//     source,
+//     endTime,
+//     votes: 0
+//   });
+//   try {
+//     const savedSubmission = await newSubmission.save(); // SAVE THE NEW SUBMISSION TO MONGODB
+//     res.status(201).json(savedSubmission);
+//   } catch (err) {
+//     res.status(500).json({ message: 'Error saving submission', error: err });
+//   }
+// });
 
 
 app.post('/api/vote', async (req: Request, res: Response) => {
