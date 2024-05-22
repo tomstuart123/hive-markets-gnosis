@@ -41,6 +41,10 @@
 ### Day10
 **Today's Progress**: leaving the homepage prediction market for now. Gonna get some advice on it first. For now, I'm going to setup the database so the data for submissions at least is persistent. Decided on using mongodb mostly as it uses json which is easier for me to pick up than postgresql. I imported mongoose. set my dotenv variables and then connected successfully to mongo in my server. I also then pasted some templates for making my get / post submissions working in mongo. They worked for storing and posting from postman... BUT the votign and setting live market now failed. Something to do with the ID changing (the id changed location in the api's deliverable. This probably just needs some tweaks to the vote/reset functions)
 **Thoughts:** - databasing seemed easy for submissions. Again most worried for when this scales up to the prediction market/order matching. Onchain might be better
+### Day11
+**Today's Progress**: okay, I updated the vote, set-live-market and get-winner functionality in server.ts. They now work with mongo and persistently. I noticed that the User can vote twice in a submission period again if the server resets.. so created a mongodb model and stored the check on user votes in the database too.
+to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-end is compatible with voting yet
+**Thoughts:** - 
 
 
 TO DO IDEAS:
