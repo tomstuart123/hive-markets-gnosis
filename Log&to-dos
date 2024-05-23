@@ -45,7 +45,9 @@
 **Today's Progress**: okay, I updated the vote, set-live-market and get-winner functionality in server.ts. They now work with mongo and persistently. I noticed that the User can vote twice in a submission period again if the server resets.. so created a mongodb model and stored the check on user votes in the database too.
 to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-end is compatible with voting yet
 **Thoughts:** - 
-
+### Day12
+**Today's Progress**: didn't do much today as wasn't travelling for work. Spent the plane ride architecting the AMM. Decided I'm going to implement it myself once done with with the database integration
+**Thoughts:** - 
 
 TO DO IDEAS:
 Essentials for Later Development
