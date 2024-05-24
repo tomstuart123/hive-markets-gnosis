@@ -46,7 +46,10 @@
 to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-end is compatible with voting yet
 **Thoughts:** - 
 ### Day12
-**Today's Progress**: didn't do much today as wasn't travelling for work. Spent the plane ride architecting the AMM. Decided I'm going to implement it myself once done with with the database integration
+**Today's Progress**: didn't do much today as was travelling for work. Spent the plane ride architecting the AMM. Decided I'm going to implement it myself once done with with the database integration
+**Thoughts:** - 
+### Day13
+**Today's Progress**: okay, back to databasing. Targeted making front-end compatible so voting works. Took a while but saw that the submissions object now had 'submissions._id' instead of submissions.id which meant the id was undefined. Just changing the html though didn't work. Our server.ts interface needed updating too. This now works
 **Thoughts:** - 
 
 TO DO IDEAS:

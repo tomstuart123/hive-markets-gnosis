@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios, { AxiosError } from 'axios';
 
-
 // Define the interface for the submission
 interface Submission {
-  id: string;
+  _id: string; // Update this to match the interface
   title: string;
   question: string;
   outcomes: string[];
@@ -23,14 +22,13 @@ interface NextWeekProps {
 
 const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, logout }) => {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [newSubmission, setNewSubmission] = useState({title: '',question: '',outcomes: [],source: '', endTime: ''});
+  const [newSubmission, setNewSubmission] = useState({ title: '', question: '', outcomes: [], source: '', endTime: '' });
   const [error, setError] = useState<string>('');
   const [voteMessage, setVoteMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [votePower, setVotePower] = useState<number | null>(null); // State to store vote power
   const disableLogin = !ready || authenticated;
   const disableLogout = !ready || (ready && !authenticated);
-
 
   useEffect(() => {
     fetchSubmissions();
@@ -44,7 +42,7 @@ const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, 
     }
   }, [authenticated, user]);
 
-   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setNewSubmission({
       ...newSubmission,
       [event.target.name]: event.target.value
@@ -63,7 +61,7 @@ const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, 
       setIsLoading(false);
     }
   };
-  
+
   const fetchVotePower = async (walletAddress: string) => {
     try {
       const response = await axios.get(`http://localhost:3001/api/vote-power/${walletAddress}`);
@@ -123,7 +121,7 @@ const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, 
   return (
     <div>
       <h1>Next Week's Contest Submissions</h1>
-      {votePower !== null && <p>Your Vote Power: {votePower}</p>} Display vote power
+      {votePower !== null && <p>Your Vote Power: {votePower}</p>} {/* Display vote power */}
       {voteMessage && <p>{voteMessage}</p>} {/* Display vote message */}
       {isLoading && <p>Loading...</p>}
       {error && <p>{error}</p>}
@@ -136,21 +134,21 @@ const NextWeek: React.FC<NextWeekProps> = ({ ready, authenticated, user, login, 
       </div>
       <ul>
         {submissions.map((submission) => (
-          <li key={submission.id}>
+          <li key={submission._id}>
             {submission.title} - Votes: {submission.votes}
             {authenticated ? (
-              <button onClick={() => handleVote(submission.id)}>Vote</button>
+              <button onClick={() => handleVote(submission._id)}>Vote</button>
             ) : (
               <button onClick={login}>Log in to Vote</button>
-              )}          
+            )}
           </li>
         ))}
       </ul>
       <button disabled={disableLogin} onClick={login}>
-      Log in
+        Log in
       </button>
       <button disabled={disableLogout} onClick={logout}>
-      Log out
+        Log out
       </button>
     </div>
   );

@@ -29,7 +29,7 @@ mongoose.connect(process.env.MONGO_URI!, {})
 });
 
 interface Submission {
-  id: string;
+  _id: string;
   title: string;
   question: string;
   outcomes: string[];
