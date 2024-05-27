@@ -51,7 +51,12 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 ### Day13
 **Today's Progress**: okay, back to databasing. Targeted making front-end compatible so voting works. Took a while but saw that the submissions object now had 'submissions._id' instead of submissions.id which meant the id was undefined. Just changing the html though didn't work. Our server.ts interface needed updating too. This now works
 
+### Day14
 **Today's Progress**: okay, took the plunge and decided to start implementing contracts for the AMM. I've just taken some templates for .sol files. Will review them tomorrow
+
+### Day15
+**Today's Progress**: forgot to push this, but yesterday I reviewed how the proposed contracts are setup and then adjusted the deploy.js. I haven't tried compiling yet. Will bug fix tomorrow
+
 
 
 TO DO IDEAS:
