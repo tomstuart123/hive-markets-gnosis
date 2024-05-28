@@ -55,6 +55,9 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 **Today's Progress**: okay, took the plunge and decided to start implementing contracts for the AMM. I've just taken some templates for .sol files. Will review them tomorrow
 
 ### Day15
+**Today's Progress**: travel day
+
+### Day16
 **Today's Progress**: forgot to push this, but yesterday I reviewed how the proposed contracts are setup and then adjusted the deploy.js. I haven't tried compiling yet. Will bug fix tomorrow
 
 

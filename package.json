@@ -5,7 +5,9 @@
   "dependencies": {
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.5",
+    "@gnosis.pm/conditional-tokens-contracts": "^1.0.3",
     "@mui/material": "^5.15.16",
+    "@openzeppelin/contracts": "^5.0.2",
     "@privy-io/react-auth": "^1.64.0",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",

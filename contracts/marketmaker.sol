@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "./ConditionalTokensWrapper.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@gnosis.pm/conditional-tokens-contracts/contracts/ConditionalTokens.sol";
 import "./OutcomeResolution.sol";
+
 
 contract MarketMaker {
     IERC20 public collateralToken;
-    ConditionalTokens public conditionalTokens;
+    ConditionalTokensWrapper public conditionalTokens;
     OutcomeResolution public outcomeResolution;
 
     struct Market {
@@ -27,9 +28,9 @@ contract MarketMaker {
     event MarketCreated(uint256 indexed marketId, string title, string question, uint256 endTime);
     event LiquidityAdded(uint256 indexed marketId, address indexed provider, uint256 amount);
 
-    constructor(address _collateralToken, address _conditionalTokens, address _outcomeResolution) {
+    constructor(address _collateralToken, address _conditionalTokensWrapper, address _outcomeResolution) {
         collateralToken = IERC20(_collateralToken);
-        conditionalTokens = ConditionalTokens(_conditionalTokens);
+        conditionalTokens = ConditionalTokensWrapper(_conditionalTokensWrapper);
         outcomeResolution = OutcomeResolution(_outcomeResolution);
     }
 
@@ -52,7 +53,28 @@ contract MarketMaker {
         emit LiquidityAdded(_marketId, msg.sender, _amount);
     }
 
-    function getMarket(uint256 _marketId) public view returns (Market memory) {
-        return markets[_marketId];
+    function getMarket(uint256 _marketId) public view returns (
+        string memory title,
+        string memory question,
+        string memory source,
+        uint256 endTime,
+        bool resolved,
+        uint256 yesCount,
+        uint256 noCount
+    ) {
+        Market storage market = markets[_marketId];
+        return (
+            market.title,
+            market.question,
+            market.source,
+            market.endTime,
+            market.resolved,
+            market.yesCount,
+            market.noCount
+        );
+    }
+
+    function getMarketLiquidity(uint256 _marketId, address _provider) public view returns (uint256) {
+        return markets[_marketId].liquidity[_provider];
     }
 }
