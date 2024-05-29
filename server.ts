@@ -6,6 +6,8 @@ import cors from 'cors';
 import { ethers } from "ethers";
 import dotenv from "dotenv";
 import VotePowerArtifact from './artifacts/contracts/votepower.sol/VotePower.json'; // Import the JSON file
+import ConditionalTokensWrapperArtifact from './artifacts/contracts/ConditionalTokensWrapper.sol/ConditionalTokensWrapper.json';
+import MarketMakerArtifact from './artifacts/contracts/MarketMaker.sol/MarketMaker.json'; // Import MarketMaker artifact
 import mongoose from 'mongoose';
 import Submission from './models/Submission'; // Import the Submission model
 import UserVote from './models/UserVote'; // IMPORT THE USERVOTE MODEL
@@ -21,12 +23,8 @@ app.use(express.json());
 
 
 mongoose.connect(process.env.MONGO_URI!, {})
-  .then(() => {
-    console.log('Connected to MongoDB');
-  })
-  .catch(err => {
-    console.error('Failed to connect to MongoDB', err);
-});
+  .then(() => {console.log('Connected to MongoDB');})
+  .catch(err => {console.error('Failed to connect to MongoDB', err);});
 
 interface Submission {
   _id: string;
@@ -53,9 +51,29 @@ let liveMarket: LiveMarket | null = null;
 
 // Ethers.js setup
 const provider = new ethers.JsonRpcProvider(`https://base-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`);
-const votePowerContractAddress = "0xd256EBF2Ca9428D8eF43Afe07dF24c9744cAcE3a"; 
-const votePowerABI = VotePowerArtifact.abi; // Extract only the ABI part
-const votePowerContract = new ethers.Contract(votePowerContractAddress, votePowerABI, provider);
+const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+
+// const votePowerContractAddress = "0xd256EBF2Ca9428D8eF43Afe07dF24c9744cAcE3a"; 
+// const votePowerABI = VotePowerArtifact.abi; // Extract only the ABI part
+// const votePowerContract = new ethers.Contract(votePowerContractAddress, votePowerABI, provider);
+
+const votePowerContract = new ethers.Contract(
+  process.env.VOTE_POWER_CONTRACT_ADDRESS!,
+  VotePowerArtifact.abi,
+  wallet
+);
+
+const conditionalTokensWrapperContract = new ethers.Contract(
+  process.env.CONDITIONAL_TOKENS_WRAPPER_CONTRACT_ADDRESS!,
+  ConditionalTokensWrapperArtifact.abi,
+  wallet
+);
+
+const marketMakerContract = new ethers.Contract(
+  process.env.MARKET_MAKER_CONTRACT_ADDRESS!,
+  MarketMakerArtifact.abi,
+  wallet
+);
 
 // Simulated function to determine the contest period
 const isSubmissionPeriod = (): boolean => {
@@ -94,14 +112,6 @@ const resetVotes = async () => {
   }
 };
 
-// Define routes
-// app.get('/api/submissions', (req: Request, res: Response) => {
-//   if (!isSubmissionPeriod()) {
-//     return res.status(403).json({ message: 'Submission period is closed' });
-//   }
-//   res.json(submissions);
-// });
-
 app.get('/api/submissions', async (req: Request, res: Response) => {
   if (!isSubmissionPeriod()) {
     return res.status(403).json({ message: 'Submission period is closed' });
@@ -113,24 +123,6 @@ app.get('/api/submissions', async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error fetching submissions', error: err });
   }
 });
-
-// app.post('/api/submissions', (req: Request, res: Response) => {
-//   if (!isSubmissionPeriod()) {
-//     return res.status(403).json({ message: 'Submission period is closed' });
-//   }
-//   const { title, question, outcomes, source, endTime } = req.body;
-//   const newSubmission: Submission = {
-//     id: uuidv4(),
-//     title,
-//     question,
-//     outcomes,
-//     source,
-//     endTime,
-//     votes: 0
-//   };
-//   submissions.push(newSubmission);
-//   res.status(201).json(newSubmission);
-// });
 
 app.post('/api/submissions', async (req: Request, res: Response) => {
   if (!isSubmissionPeriod()) {
@@ -189,36 +181,10 @@ app.post('/api/vote', async (req: Request, res: Response) => {
   }
 });
 
-// app.post('/api/vote', async (req: Request, res: Response) => {
-//   if (!isSubmissionPeriod()) {
-//     return res.status(403).json({ message: 'Voting period is closed' });
-//   }
-//   const { submissionId, walletAddress } = req.body;
-//   console.log(`Vote request received for submissionId: ${submissionId}, walletAddress: ${walletAddress}`);
-//   const submission = submissions.find(sub => sub.id === submissionId);
-//   if (submission) {
-//     // Check if the user has already voted
-//     if (userVotes[walletAddress]) {
-//       return res.status(403).json({ message: 'You have already used your vote power for this period.' });
-//     }
-//     try {
-//       const votePowerStr = await getVotePower(walletAddress);
-//       const votePower = BigInt(votePowerStr);
-//       submission.votes += Number(votePower);
-//       userVotes[walletAddress] = true; // Mark the user as having voted
-//       res.json({ message: "Vote recorded", submission });
-//     } catch (error) {
-//       res.status(500).json({ message: "Error fetching vote power", error });
-//     }
-//   } else {
-//     res.status(404).json({ message: "Submission not found" });
-//   }
-// });
 
 app.get('/api/vote-power/:walletAddress', async (req: Request, res: Response) => {
   const { walletAddress } = req.params;
   try {
-    console.log(`Fetching vote power for wallet address: ${walletAddress}`);
     const votePower = await getVotePower(walletAddress);
     res.json({ votePower });
   } catch (error) {
@@ -226,18 +192,6 @@ app.get('/api/vote-power/:walletAddress', async (req: Request, res: Response) =>
     res.status(500).json({ message: "Error fetching vote power", error });
   }
 });
-
-// Endpoint to determine and fetch the current winner
-// app.get('/api/winner', (req: Request, res: Response) => {
-//   // if (isSubmissionPeriod()) {
-//   //   return res.status(403).json({ message: 'Cannot fetch winner during submission period' });
-//   // }
-//   if (submissions.length === 0) {
-//     return res.status(404).json({ message: "No submissions available." });
-//   }
-//   const winner = submissions.reduce((a, b) => (a.votes > b.votes ? a : b));
-//   res.json(winner);
-// });
 
 app.get('/api/winner', async (req: Request, res: Response) => {
   // if (isSubmissionPeriod()) {
@@ -255,26 +209,6 @@ app.get('/api/winner', async (req: Request, res: Response) => {
   }
 });
 
-// Endpoint to set the live market from the winning submission
-// app.post('/api/set-live-market', (req: Request, res: Response) => {
-//   // if (isSubmissionPeriod()) {
-//   //   return res.status(403).json({ message: 'Cannot reset during submission period' });
-//   // }
-//   if (submissions.length === 0) {
-//       return res.status(404).json({ message: "No submissions available to set as a live market." });
-//   }
-//   const winningSubmission = submissions.reduce((prev, current) => (prev.votes > current.votes ? prev : current));
-//   liveMarket = {
-//       ...winningSubmission,
-//       trading: {
-//           yes: 0.5,  // Example initial trading value
-//           no: 0.5    // Example initial trading value
-//       }
-//   };
-//   submissions = [];  // Optionally reset submissions for the next contest
-//   resetVotes();
-//   res.status(201).json(liveMarket);
-// });
 
 app.post('/api/set-live-market', async (req: Request, res: Response) => {
   // if (isSubmissionPeriod()) {
@@ -286,6 +220,20 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
       return res.status(404).json({ message: "No submissions available to set as a live market." });
     }
     const winningSubmission = submissions.reduce((prev, current) => (prev.votes > current.votes ? prev : current));
+    const questionId = ethers.id(winningSubmission.question);
+    const oracle = wallet.address;
+    const outcomeSlotCount = winningSubmission.outcomes.length;
+
+    await conditionalTokensWrapperContract.prepareCondition(oracle, questionId, outcomeSlotCount);
+
+    await marketMakerContract.setupMarket(
+      conditionalTokensWrapperContract.address,
+      questionId,
+      outcomeSlotCount,
+      [/* initial funding amounts */],
+      wallet.address
+    );
+
     liveMarket = {
       ...winningSubmission.toObject(),
       trading: {
