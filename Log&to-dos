@@ -64,6 +64,12 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 **Today's Progress**: 'had to wrap conditional tokens in a wrapper with a higher contract. Tweaked other compatibility stuff. Contracts now compiled and deployed. Front-end integration next'
 
 
+### Day18
+**Today's Progress**: updated server.ts to push my live market onchain on submission period end. I still get an error when I do this though so need to check this next'
+
+### Day19
+**Today's Progress**:
+
 TO DO IDEAS:
 Essentials for Later Development
 Persistent Data Storage:

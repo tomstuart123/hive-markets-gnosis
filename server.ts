@@ -220,9 +220,19 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
       return res.status(404).json({ message: "No submissions available to set as a live market." });
     }
     const winningSubmission = submissions.reduce((prev, current) => (prev.votes > current.votes ? prev : current));
+    liveMarket = {
+      ...winningSubmission.toObject(),
+      trading: {
+        yes: 0.5, // Example initial trading value
+        no: 0.5  // Example initial trading value
+      }
+    };
+    // const questionId = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(liveMarket.question));
     const questionId = ethers.id(winningSubmission.question);
     const oracle = wallet.address;
-    const outcomeSlotCount = winningSubmission.outcomes.length;
+    // const outcomeSlotCount = winningSubmission.outcomes.length;
+    const outcomeSlotCount = 2; // For yes/no market
+
 
     await conditionalTokensWrapperContract.prepareCondition(oracle, questionId, outcomeSlotCount);
 
@@ -234,13 +244,7 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
       wallet.address
     );
 
-    liveMarket = {
-      ...winningSubmission.toObject(),
-      trading: {
-        yes: 0.5, // Example initial trading value
-        no: 0.5  // Example initial trading value
-      }
-    };
+    
     await Submission.deleteMany(); // CLEAR SUBMISSIONS FOR NEXT CYCLE
     await resetVotes(); // RESET VOTES IN DATABASE
     res.status(201).json(liveMarket);
