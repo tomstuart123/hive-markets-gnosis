@@ -232,7 +232,9 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
     // Get the questionId from the submission ID
     let questionId;
     try {
-      questionId = ethersId((winningSubmission._id as string).toString());
+      // questionId = ethersId((winningSubmission._id as string).toString());
+      const uniqueString = `${(winningSubmission._id as string).toString()}-${Date.now()}`;
+      questionId = ethers.keccak256(ethers.toUtf8Bytes(uniqueString));
       console.log(`Generated questionId: ${questionId}`);
     } catch (error) {
       console.error('Error generating questionId:', error);
@@ -257,6 +259,7 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
     
     try {
       console.log("Creating market in MarketMaker contract...");
+      console.log(liveMarket.title, liveMarket.question, liveMarket.source, liveMarket.endTime);
       const createMarketTx = await marketMakerContract.createMarket(liveMarket.title, liveMarket.question, liveMarket.source, liveMarket.endTime);
       await createMarketTx.wait();
       console.log("Market created in MarketMaker contract:", createMarketTx.hash);
