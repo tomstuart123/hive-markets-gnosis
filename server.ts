@@ -11,6 +11,7 @@ import MarketMakerArtifact from './artifacts/contracts/MarketMaker.sol/MarketMak
 import mongoose from 'mongoose';
 import Submission from './models/Submission'; // Import the Submission model
 import UserVote from './models/UserVote'; // IMPORT THE USERVOTE MODEL
+import { keccak256, toUtf8Bytes, id as ethersId } from 'ethers';
 
 
 dotenv.config(); // Ensure this is called to load .env variables
@@ -209,7 +210,6 @@ app.get('/api/winner', async (req: Request, res: Response) => {
   }
 });
 
-
 app.post('/api/set-live-market', async (req: Request, res: Response) => {
   // if (isSubmissionPeriod()) {
   //   return res.status(403).json({ message: 'Cannot set live market during submission period' });
@@ -219,6 +219,7 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
     if (submissions.length === 0) {
       return res.status(404).json({ message: "No submissions available to set as a live market." });
     }
+    
     const winningSubmission = submissions.reduce((prev, current) => (prev.votes > current.votes ? prev : current));
     liveMarket = {
       ...winningSubmission.toObject(),
@@ -227,31 +228,52 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
         no: 0.5  // Example initial trading value
       }
     };
-    // const questionId = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(liveMarket.question));
-    const questionId = ethers.id(winningSubmission.question);
+
+    // Get the questionId from the submission ID
+    let questionId;
+    try {
+      questionId = ethersId((winningSubmission._id as string).toString());
+      console.log(`Generated questionId: ${questionId}`);
+    } catch (error) {
+      console.error('Error generating questionId:', error);
+      return res.status(500).json({ message: 'Error generating questionId', error });
+    }
+
     const oracle = wallet.address;
-    // const outcomeSlotCount = winningSubmission.outcomes.length;
     const outcomeSlotCount = 2; // For yes/no market
+    console.log(`Oracle address: ${oracle}, Outcome slot count: ${outcomeSlotCount}`);
+    console.log(`ID=${questionId},Oracle=${oracle},Counter=${outcomeSlotCount},`)
 
-
-    await conditionalTokensWrapperContract.prepareCondition(oracle, questionId, outcomeSlotCount);
-
-    await marketMakerContract.setupMarket(
-      conditionalTokensWrapperContract.address,
-      questionId,
-      outcomeSlotCount,
-      [/* initial funding amounts */],
-      wallet.address
-    );
-
+    try {
+      const prepareConditionTx = await conditionalTokensWrapperContract.prepareCondition(oracle, questionId, outcomeSlotCount, {
+        gasLimit: 500000 // Adjust this value as needed
+      });      
+      await prepareConditionTx.wait();
+      console.log("Condition prepared:", prepareConditionTx.hash);
+    } catch (error) {
+      console.error('Error preparing condition:', error);
+      return res.status(500).json({ message: 'Error preparing condition', error });
+    }
+    
+    try {
+      console.log("Creating market in MarketMaker contract...");
+      const createMarketTx = await marketMakerContract.createMarket(liveMarket.title, liveMarket.question, liveMarket.source, liveMarket.endTime);
+      await createMarketTx.wait();
+      console.log("Market created in MarketMaker contract:", createMarketTx.hash);
+    } catch (error) {
+      console.error('Error creating market in MarketMaker contract:', error);
+      return res.status(500).json({ message: 'Error creating market in MarketMaker contract', error });
+    }
     
     await Submission.deleteMany(); // CLEAR SUBMISSIONS FOR NEXT CYCLE
     await resetVotes(); // RESET VOTES IN DATABASE
     res.status(201).json(liveMarket);
   } catch (err) {
+    console.error('Unexpected error:', err);
     res.status(500).json({ message: 'Error setting live market', error: err });
   }
 });
+
 
 // Endpoint to get the current live market
 app.get('/api/live-market', (req: Request, res: Response) => {

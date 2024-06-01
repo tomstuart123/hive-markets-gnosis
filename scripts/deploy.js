@@ -8,14 +8,17 @@ async function main() {
     await votePower.waitForDeployment();
     console.log("VotePower contract deployed to:", votePower.target);
 
-    // Deploy the ConditionalTokens contract
-    // console.log("Deploying ConditionalTokens contract...");
-    // const ConditionalTokens = await ethers.deployContract("IConditionalTokens");
-    // await ConditionalTokens.waitForDeployment();
-    // console.log("ConditionalTokens contract deployed to:", ConditionalTokens.target);
 
+
+    // Deploy the ConditionalTokens contract (the concrete implementation)
+    console.log("Deploying ConditionalTokens contract...");
+    const conditionalTokens = await ethers.deployContract("ConditionalTokens");
+    await conditionalTokens.waitForDeployment();
+    console.log("ConditionalTokens contract deployed to:", conditionalTokens.target);
+
+    // Deploy the ConditionalTokensWrapper contract, passing the address of the deployed ConditionalTokens contract
     console.log("Deploying ConditionalTokensWrapper contract...");
-    const conditionalTokensWrapper = await ethers.deployContract("ConditionalTokensWrapper", [TokenAddress]);
+    const conditionalTokensWrapper = await ethers.deployContract("ConditionalTokensWrapper", [conditionalTokens.target]);
     await conditionalTokensWrapper.waitForDeployment();
     console.log("ConditionalTokensWrapper contract deployed to:", conditionalTokensWrapper.target);
 

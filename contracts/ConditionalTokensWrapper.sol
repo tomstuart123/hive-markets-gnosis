@@ -15,8 +15,18 @@ contract ConditionalTokensWrapper {
         bytes32 questionId,
         uint outcomeSlotCount
     ) external {
+        require(oracle != address(0), "Invalid oracle address");
+        require(questionId != bytes32(0), "Invalid questionId");
+        require(outcomeSlotCount > 0, "Invalid outcomeSlotCount");
+
+        // Debugging event
+        emit DebugPrepareCondition(oracle, questionId, outcomeSlotCount);
+
         conditionalTokens.prepareCondition(oracle, questionId, outcomeSlotCount);
     }
+
+    // Add a debug event to help trace issues
+    event DebugPrepareCondition(address oracle, bytes32 questionId, uint outcomeSlotCount);
 
     function reportPayouts(
         bytes32 questionId,

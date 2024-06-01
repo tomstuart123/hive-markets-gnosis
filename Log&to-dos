@@ -68,7 +68,10 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 **Today's Progress**: updated server.ts to push my live market onchain on submission period end. I still get an error when I do this though so need to check this next'
 
 ### Day19
-**Today's Progress**:
+**Today's Progress**:'still trying to sort out the server calls of the contracts. Function calls are named wrong. Still erroring but am closer'
+
+### Day20
+**Today's Progress**:'good news. The condition for the conditional token is now preparing. The problem was we passed the ERC20 address to the tokenswrapper. We needed to pass a ConditionalTokens.sol into the wrapper. I created this, referenced IConditionalTokens, and got it working. Now The MarketMaker is erroring out. So will move onto that'
 
 TO DO IDEAS:
 Essentials for Later Development
