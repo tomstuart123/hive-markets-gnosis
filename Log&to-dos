@@ -77,6 +77,7 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 ### Day21
 **Today's Progress**:able to set a live market in marketmaker contract. Solution to the bug was converting the livemarket.endTime to a unix timestamp to stop bignumber issues. Not moving onto front-end yet. First i want to write some scripts to make sure the contracts work once deployed by our server. 
 **Extra Progress**- I was dumb. Forgot to actually add the buying/trading of shares via an AMM in marketmaker.sol. Lots to do here so going to push where I am so far
+**Extra Progress2.0**- got a new marketmaker.sol to add buying/selling. An overrand fee setup and initial liquidity. The script runs to do this. Next steps, still need to extend to remove liquidity. Also need to update server.ts to account. 
 
 TO DO IDEAS:
 Essentials for Later Development
