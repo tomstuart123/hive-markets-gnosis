@@ -72,6 +72,15 @@ const runTests = async () => {
     const balanceAfterSelling = await collateralToken.balanceOf(wallet.address);
     console.log("Balance after selling outcome shares:", ethers.formatUnits(balanceAfterSelling, 18));
 
+    // Remove liquidity from the market
+    const removeLiquidityTx = await marketMaker.removeLiquidity(marketId, amount2); // Removing half the initial liquidity
+    await removeLiquidityTx.wait();
+    console.log("Liquidity removed from the market:", removeLiquidityTx.hash);
+
+    // Log balance after removing liquidity
+    const balanceAfterRemovingLiquidity = await collateralToken.balanceOf(wallet.address);
+    console.log("Balance after removing liquidity:", ethers.formatUnits(balanceAfterRemovingLiquidity, 18));
+
     // Check market details
     const marketDetails = await marketMaker.getMarket(marketId);
     console.log("Market details:", marketDetails);

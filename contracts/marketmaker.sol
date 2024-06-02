@@ -30,6 +30,7 @@ contract MarketMaker {
     event LiquidityAdded(uint256 indexed marketId, address indexed provider, uint256 amount);
     event OutcomeShareBought(uint256 indexed marketId, address indexed buyer, uint256 outcomeIndex, uint256 amount);
     event OutcomeShareSold(uint256 indexed marketId, address indexed seller, uint256 outcomeIndex, uint256 amount);
+    event LiquidityRemoved(uint256 indexed marketId, address indexed provider, uint256 amount);
 
     constructor(address _collateralToken, address _conditionalTokensWrapper, address _outcomeResolution) {
         collateralToken = IERC20(_collateralToken);
@@ -60,6 +61,16 @@ contract MarketMaker {
 
         market.liquidity[msg.sender] += _amount;
         emit LiquidityAdded(_marketId, msg.sender, _amount);
+    }
+
+    function removeLiquidity(uint256 _marketId, uint256 _amount) public {
+        Market storage market = markets[_marketId];
+        require(market.liquidity[msg.sender] >= _amount, "Insufficient liquidity");
+
+        market.liquidity[msg.sender] -= _amount;
+        require(collateralToken.transfer(msg.sender, _amount), "Transfer failed");
+
+        emit LiquidityRemoved(_marketId, msg.sender, _amount);
     }
 
     function buyOutcome(uint256 _marketId, uint256 _outcomeIndex, uint256 _amount) public {

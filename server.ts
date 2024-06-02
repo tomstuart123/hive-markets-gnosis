@@ -8,10 +8,12 @@ import dotenv from "dotenv";
 import VotePowerArtifact from './artifacts/contracts/votepower.sol/VotePower.json'; // Import the JSON file
 import ConditionalTokensWrapperArtifact from './artifacts/contracts/ConditionalTokensWrapper.sol/ConditionalTokensWrapper.json';
 import MarketMakerArtifact from './artifacts/contracts/MarketMaker.sol/MarketMaker.json'; // Import MarketMaker artifact
+// import { CollateralTokenArtifact } from'./artifacts/contracts/IERC20.sol/IERC20.json';
 import mongoose from 'mongoose';
 import Submission from './models/Submission'; // Import the Submission model
 import UserVote from './models/UserVote'; // IMPORT THE USERVOTE MODEL
 import { keccak256, toUtf8Bytes, id as ethersId } from 'ethers';
+import { NonceManager, Signer } from 'ethers'
 
 
 dotenv.config(); // Ensure this is called to load .env variables
@@ -53,27 +55,35 @@ let liveMarket: LiveMarket | null = null;
 // Ethers.js setup
 const provider = new ethers.JsonRpcProvider(`https://base-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`);
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+const ERC20Artifact = require('./artifacts/contracts/IERC20.sol/IERC20.json');
+const managedSigner = new NonceManager(wallet);  // Wrap the wallet with NonceManager
 
-// const votePowerContractAddress = "0xd256EBF2Ca9428D8eF43Afe07dF24c9744cAcE3a"; 
-// const votePowerABI = VotePowerArtifact.abi; // Extract only the ABI part
-// const votePowerContract = new ethers.Contract(votePowerContractAddress, votePowerABI, provider);
 
 const votePowerContract = new ethers.Contract(
   process.env.VOTE_POWER_CONTRACT_ADDRESS!,
   VotePowerArtifact.abi,
-  wallet
+  managedSigner
 );
+
+
+// const collateralToken = new ethers.Contract(process.env.TOKEN_CONTRACT_ADDRESS!, CollateralTokenArtifact.abi, wallet);
+const collateralToken = new ethers.Contract(
+  process.env.TOKEN_CONTRACT_ADDRESS!, 
+  ERC20Artifact.abi, 
+  managedSigner
+);
+
 
 const conditionalTokensWrapperContract = new ethers.Contract(
   process.env.CONDITIONAL_TOKENS_WRAPPER_CONTRACT_ADDRESS!,
   ConditionalTokensWrapperArtifact.abi,
-  wallet
+  managedSigner
 );
 
 const marketMakerContract = new ethers.Contract(
   process.env.MARKET_MAKER_CONTRACT_ADDRESS!,
   MarketMakerArtifact.abi,
-  wallet
+  managedSigner
 );
 
 // Simulated function to determine the contest period
@@ -232,7 +242,6 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
     // Get the questionId from the submission ID
     let questionId;
     try {
-      // questionId = ethersId((winningSubmission._id as string).toString());
       const uniqueString = `${(winningSubmission._id as string).toString()}-${Date.now()}`;
       questionId = ethers.keccak256(ethers.toUtf8Bytes(uniqueString));
       console.log(`Generated questionId: ${questionId}`);
@@ -247,6 +256,8 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
     console.log(`Oracle address: ${oracle}, Outcome slot count: ${outcomeSlotCount}`);
     console.log(`ID=${questionId},Oracle=${oracle},Counter=${outcomeSlotCount},`)
 
+    let nonce = await provider.getTransactionCount(wallet.address);
+    console.log("Current nonce:", nonce);
 
     try {
       const prepareConditionTx = await conditionalTokensWrapperContract.prepareCondition(oracle, questionId, outcomeSlotCount, {
@@ -258,11 +269,35 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
       console.error('Error preparing condition:', error);
       return res.status(500).json({ message: 'Error preparing condition', error });
     }
+
+    console.log("Current nonce:", nonce);
+
+    const amountToApprove = ethers.parseEther("1");
+    console.log("Amount to approve (in wei):", amountToApprove.toString());
+    
+    const currentAllowance = await collateralToken.allowance(wallet.address, marketMakerContract.target);
+    console.log("Current allowance:", currentAllowance.toString());
+    
+    try {
+      console.log("Attempting to approve collateral tokens...");
+      const approveTx = await collateralToken.approve(marketMakerContract.target, amountToApprove, {
+        nonce: nonce++ // Use the current nonce and increment
+      });
+      await approveTx.wait();
+      console.log("Collateral tokens approved for creating market:", approveTx.hash);
+    } catch (error) {
+      console.error('Error approving collateral tokens:', error);
+      return res.status(500).json({ message: 'Error approving collateral tokens', error });
+    }
+    
+
+    console.log("Current nonce:", nonce);
+
     
     try {
       console.log("Creating market in MarketMaker contract...");
       console.log(liveMarket.title, liveMarket.question, liveMarket.source, endTimeTimestamp);
-      const createMarketTx = await marketMakerContract.createMarket(liveMarket.title, liveMarket.question, liveMarket.source, endTimeTimestamp);
+      const createMarketTx = await marketMakerContract.createMarket(liveMarket.title, liveMarket.question, liveMarket.source, endTimeTimestamp, ethers.parseEther("1"), 0);
       await createMarketTx.wait();
       console.log("Market created in MarketMaker contract:", createMarketTx.hash);
     } catch (error) {
@@ -286,6 +321,73 @@ app.get('/api/live-market', (req: Request, res: Response) => {
       res.json(liveMarket);
   } else {
       res.status(404).json({ message: "No live market set" });
+  }
+});
+
+app.post('/api/add-liquidity', async (req: Request, res: Response) => {
+  const { marketId, amount } = req.body;
+  try {
+    const amountParsed = ethers.parseUnits(amount, 18);
+    const approveTx = await collateralToken.approve(marketMakerContract.target, amountParsed);
+    await approveTx.wait();
+    console.log("Collateral tokens approved for adding liquidity:", approveTx.hash);
+
+    const addLiquidityTx = await marketMakerContract.addLiquidity(marketId, amountParsed);
+    await addLiquidityTx.wait();
+    console.log("Liquidity added:", addLiquidityTx.hash);
+
+    res.status(200).json({ message: 'Liquidity added', txHash: addLiquidityTx.hash });
+  } catch (error) {
+    console.error('Error adding liquidity:', error);
+    res.status(500).json({ message: 'Error adding liquidity', error });
+  }
+});
+
+app.post('/api/remove-liquidity', async (req: Request, res: Response) => {
+  const { marketId, amount } = req.body;
+  try {
+    const amountParsed = ethers.parseUnits(amount, 18);
+    const removeLiquidityTx = await marketMakerContract.removeLiquidity(marketId, amountParsed);
+    await removeLiquidityTx.wait();
+    console.log("Liquidity removed:", removeLiquidityTx.hash);
+
+    res.status(200).json({ message: 'Liquidity removed', txHash: removeLiquidityTx.hash });
+  } catch (error) {
+    console.error('Error removing liquidity:', error);
+    res.status(500).json({ message: 'Error removing liquidity', error });
+  }
+});
+
+app.post('/api/buy-outcome', async (req: Request, res: Response) => {
+  const { marketId, outcomeIndex, amount } = req.body;
+  try {
+    const amountParsed = ethers.parseUnits(amount, 18);
+    const approveTx = await collateralToken.approve(marketMakerContract.target, amountParsed);
+    await approveTx.wait();
+    console.log("Collateral tokens approved for adding liquidity:", approveTx.hash);
+    const buyOutcomeTx = await marketMakerContract.buyOutcome(marketId, outcomeIndex, amountParsed);
+    await buyOutcomeTx.wait();
+    console.log("Outcome shares bought:", buyOutcomeTx.hash);
+
+    res.status(200).json({ message: 'Outcome shares bought', txHash: buyOutcomeTx.hash });
+  } catch (error) {
+    console.error('Error buying outcome shares:', error);
+    res.status(500).json({ message: 'Error buying outcome shares', error });
+  }
+});
+
+app.post('/api/sell-outcome', async (req: Request, res: Response) => {
+  const { marketId, outcomeIndex, amount } = req.body;
+  try {
+    const amountParsed = ethers.parseUnits(amount, 18);
+    const sellOutcomeTx = await marketMakerContract.sellOutcome(marketId, outcomeIndex, amountParsed);
+    await sellOutcomeTx.wait();
+    console.log("Outcome shares sold:", sellOutcomeTx.hash);
+
+    res.status(200).json({ message: 'Outcome shares sold', txHash: sellOutcomeTx.hash });
+  } catch (error) {
+    console.error('Error selling outcome shares:', error);
+    res.status(500).json({ message: 'Error selling outcome shares', error });
   }
 });
 
