@@ -241,10 +241,12 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
       return res.status(500).json({ message: 'Error generating questionId', error });
     }
 
+    const endTimeTimestamp = Math.floor(new Date(liveMarket.endTime).getTime() / 1000); // Convert endTime to a Unix timestamp
     const oracle = wallet.address;
     const outcomeSlotCount = 2; // For yes/no market
     console.log(`Oracle address: ${oracle}, Outcome slot count: ${outcomeSlotCount}`);
     console.log(`ID=${questionId},Oracle=${oracle},Counter=${outcomeSlotCount},`)
+
 
     try {
       const prepareConditionTx = await conditionalTokensWrapperContract.prepareCondition(oracle, questionId, outcomeSlotCount, {
@@ -259,8 +261,8 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
     
     try {
       console.log("Creating market in MarketMaker contract...");
-      console.log(liveMarket.title, liveMarket.question, liveMarket.source, liveMarket.endTime);
-      const createMarketTx = await marketMakerContract.createMarket(liveMarket.title, liveMarket.question, liveMarket.source, liveMarket.endTime);
+      console.log(liveMarket.title, liveMarket.question, liveMarket.source, endTimeTimestamp);
+      const createMarketTx = await marketMakerContract.createMarket(liveMarket.title, liveMarket.question, liveMarket.source, endTimeTimestamp);
       await createMarketTx.wait();
       console.log("Market created in MarketMaker contract:", createMarketTx.hash);
     } catch (error) {
