@@ -80,6 +80,9 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 **Extra Progress2.0**- got a new marketmaker.sol to add buying/selling. An overrand fee setup and initial liquidity. The script runs to do this. Next steps, still need to extend to remove liquidity. Also need to update server.ts to account. 
 **Extra Progress3.0**- busy day. Added remove liqudity in the marketmaker.sol. then updated server.ts to work with our new marketmakers. Not 100% I've covered everything that makes a prediction market work... but I think I'll only find more flaws in it by progressing for now. I'm going to move onto front-end tomorrow
 
+### Day22
+**Today's Progress**: 
+
 TO DO IDEAS:
 Essentials for Later Development
 Persistent Data Storage:

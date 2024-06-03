@@ -250,7 +250,13 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
       return res.status(500).json({ message: 'Error generating questionId', error });
     }
 
-    const endTimeTimestamp = Math.floor(new Date(liveMarket.endTime).getTime() / 1000); // Convert endTime to a Unix timestamp
+    // Set endTime to 9 days in the future for now. UPDATE THIS LATER
+    const currentTime = new Date();
+    const futureTime = new Date(currentTime);
+    futureTime.setDate(currentTime.getDate() + 9);
+    const endTimeTimestamp = Math.floor(futureTime.getTime() / 1000); // Convert endTime to a Unix timestamp
+    console.log(`EndTime Timestamp: ${endTimeTimestamp}`);    
+    
     const oracle = wallet.address;
     const outcomeSlotCount = 2; // For yes/no market
     console.log(`Oracle address: ${oracle}, Outcome slot count: ${outcomeSlotCount}`);
@@ -281,7 +287,7 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
     try {
       console.log("Attempting to approve collateral tokens...");
       const approveTx = await collateralToken.approve(marketMakerContract.target, amountToApprove, {
-        nonce: nonce++ // Use the current nonce and increment
+        // nonce: nonce++ // Use the current nonce and increment
       });
       await approveTx.wait();
       console.log("Collateral tokens approved for creating market:", approveTx.hash);

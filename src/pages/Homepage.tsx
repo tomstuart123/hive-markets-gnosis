@@ -6,23 +6,21 @@ import { Link } from 'react-router-dom'; // Import Link from react-router-dom
 
 // Define the interface for the market data
 interface Market {
+  title: string;
   question: string;
+  source: string;
+  endTime: string;
   trading: {
     yes: number;
     no: number;
   };
 }
 
-
-interface TimePeriod {
-  startTime: Date;
-  endTime: Date;
-}
-
 const HomePage = () => {
   const [market, setMarket] = useState<Market | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [amount, setAmount] = useState<string>(''); // Amount input for buy/sell and liquidity
 
   useEffect(() => {
     const fetchMarket = async () => {
@@ -49,13 +47,112 @@ const HomePage = () => {
   if (isLoading) return <p>Loading...</p>;
   if (error) return <p>Error: {error}</p>;
 
+  const handleBuyOutcome = async (outcomeIndex: number) => {
+    try {
+      const response = await axios.post('http://localhost:3001/api/buy-outcome', {
+        marketId: 1, // Assuming market ID is 1
+        outcomeIndex,
+        amount,
+      });
+      console.log('Outcome shares bought:', response.data);
+    } catch (error) {
+      console.error('Error buying outcome shares:', error);
+    }
+  };
+
+  const handleSellOutcome = async (outcomeIndex: number) => {
+    try {
+      const response = await axios.post('http://localhost:3001/api/sell-outcome', {
+        marketId: 1, // Assuming market ID is 1
+        outcomeIndex,
+        amount,
+      });
+      console.log('Outcome shares sold:', response.data);
+    } catch (error) {
+      console.error('Error selling outcome shares:', error);
+    }
+  };
+
+  const handleAddLiquidity = async () => {
+    try {
+      const response = await axios.post('http://localhost:3001/api/add-liquidity', {
+        marketId: 1, // Assuming market ID is 1
+        amount,
+      });
+      console.log('Liquidity added:', response.data);
+    } catch (error) {
+      console.error('Error adding liquidity:', error);
+    }
+  };
+
+  const handleRemoveLiquidity = async () => {
+    try {
+      const response = await axios.post('http://localhost:3001/api/remove-liquidity', {
+        marketId: 1, // Assuming market ID is 1
+        amount,
+      });
+      console.log('Liquidity removed:', response.data);
+    } catch (error) {
+      console.error('Error removing liquidity:', error);
+    }
+  };
+
   return (
     <div>
       <h1>Live Prediction Market</h1>
       {market ? (
         <>
           <h2>{market.question}</h2>
-          {/* Render additional market information and charts here */}
+          <div>
+            <p><strong>Source:</strong> <a href={market.source} target="_blank" rel="noopener noreferrer">{market.source}</a></p>
+            <p><strong>End Time:</strong> {new Date(market.endTime).toLocaleString()}</p>
+            <p><strong>Trading:</strong> Yes: {market.trading.yes}, No: {market.trading.no}</p>
+          </div>
+          <div>
+            <h3>Buy Outcome Shares</h3>
+            <input
+              type="text"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="Amount"
+            />
+            <button onClick={() => handleBuyOutcome(0)}>Buy Yes</button>
+            <button onClick={() => handleBuyOutcome(1)}>Buy No</button>
+          </div>
+          <div>
+            <h3>Sell Outcome Shares</h3>
+            <input
+              type="text"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="Amount"
+            />
+            <button onClick={() => handleSellOutcome(0)}>Sell Yes</button>
+            <button onClick={() => handleSellOutcome(1)}>Sell No</button>
+          </div>
+
+          <div>
+            <h3>Add Liquidity</h3>
+            <input
+              type="text"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="Amount"
+            />
+            <button onClick={handleAddLiquidity}>Add Liquidity</button>
+          </div>
+
+          <div>
+            <h3>Remove Liquidity</h3>
+            <input
+              type="text"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="Amount"
+            />
+            <button onClick={handleRemoveLiquidity}>Remove Liquidity</button>
+          </div>
+        
         </>
       ) : error ? (
         <>
