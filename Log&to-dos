@@ -81,7 +81,10 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 **Extra Progress3.0**- busy day. Added remove liqudity in the marketmaker.sol. then updated server.ts to work with our new marketmakers. Not 100% I've covered everything that makes a prediction market work... but I think I'll only find more flaws in it by progressing for now. I'm going to move onto front-end tomorrow
 
 ### Day22
-**Today's Progress**: 
+**Today's Progress**: front-end functionality works to add/revoke liquidity and buy shares. However the front-end doesnt pull the latest live market if the server stops. Need to tackle that next. 
+
+### Day23
+**Today's Progress**: made the market persistent between server restarts by storing the livemarket variable in our database. Next steps, I want to show more data in the front-end about the markets. Maybe initially how much liquidity is in the market. Second, how many shares have been bought. This will likely mean I need to return to the contract. Right now the liquidity pool and shares are seperate. There should probably be a link. Finally, I'd like the front-end to be able to display old markets. 
 
 TO DO IDEAS:
 Essentials for Later Development

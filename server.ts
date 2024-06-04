@@ -1,19 +1,19 @@
 // note I may have to change how I store data with BigInt as I'm using Big numbers
 
 import express, { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
 import cors from 'cors';
 import { ethers } from "ethers";
 import dotenv from "dotenv";
 import VotePowerArtifact from './artifacts/contracts/votepower.sol/VotePower.json'; // Import the JSON file
 import ConditionalTokensWrapperArtifact from './artifacts/contracts/ConditionalTokensWrapper.sol/ConditionalTokensWrapper.json';
 import MarketMakerArtifact from './artifacts/contracts/MarketMaker.sol/MarketMaker.json'; // Import MarketMaker artifact
-// import { CollateralTokenArtifact } from'./artifacts/contracts/IERC20.sol/IERC20.json';
 import mongoose from 'mongoose';
 import Submission from './models/Submission'; // Import the Submission model
 import UserVote from './models/UserVote'; // IMPORT THE USERVOTE MODEL
 import { keccak256, toUtf8Bytes, id as ethersId } from 'ethers';
-import { NonceManager, Signer } from 'ethers'
+import { NonceManager, Signer } from 'ethers';
+import LiveMarket from './models/LiveMarket'; // Import the LiveMarket model;
+
 
 
 dotenv.config(); // Ensure this is called to load .env variables
@@ -122,6 +122,21 @@ const resetVotes = async () => {
     console.error("Error resetting user votes:", err);
   }
 };
+
+// Initialize live market from the database
+const initializeLiveMarket = async () => {
+  try {
+    const savedLiveMarket = await LiveMarket.findOne();
+    if (savedLiveMarket) {
+      liveMarket = savedLiveMarket.toObject();
+    }
+  } catch (error) {
+    console.error('Error initializing live market:', error);
+  }
+};
+
+// Call this function when the server starts
+initializeLiveMarket();
 
 app.get('/api/submissions', async (req: Request, res: Response) => {
   if (!isSubmissionPeriod()) {
@@ -239,6 +254,10 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
       }
     };
 
+    await LiveMarket.deleteMany(); // Clear any existing live markets
+    const savedLiveMarket = new LiveMarket(liveMarket);
+    await savedLiveMarket.save();
+
     // Get the questionId from the submission ID
     let questionId;
     try {
@@ -322,11 +341,17 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
 
 
 // Endpoint to get the current live market
-app.get('/api/live-market', (req: Request, res: Response) => {
-  if (liveMarket) {
+app.get('/api/live-market', async (req: Request, res: Response) => {
+  try {
+    const liveMarket = await LiveMarket.findOne();
+    if (liveMarket) {
       res.json(liveMarket);
-  } else {
+    } else {
       res.status(404).json({ message: "No live market set" });
+    }
+  } catch (error) {
+    console.error('Error fetching live market:', error);
+    res.status(500).json({ message: 'Error fetching live market', error });
   }
 });
 
