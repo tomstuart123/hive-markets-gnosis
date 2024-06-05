@@ -21,7 +21,6 @@ contract MarketMaker {
         mapping(address => uint256) liquidity;
         uint256 initialLiquidity;
         uint256 overround;
-        uint256 constantProduct; // K = yesCount * noCount
     }
 
     mapping(uint256 => Market) public markets;
@@ -49,11 +48,6 @@ contract MarketMaker {
         market.initialLiquidity = _initialLiquidity;
         market.overround = _overround;
 
-        // Initialize market with initial liquidity for both outcomes
-        market.yesCount = _initialLiquidity / 2;
-        market.noCount = _initialLiquidity / 2;
-        market.constantProduct = market.yesCount * market.noCount;
-
         // Add initial liquidity
         require(collateralToken.transferFrom(msg.sender, address(this), _initialLiquidity), "Initial liquidity transfer failed");
         market.liquidity[msg.sender] = _initialLiquidity;
@@ -65,12 +59,6 @@ contract MarketMaker {
         Market storage market = markets[_marketId];
         require(collateralToken.transferFrom(msg.sender, address(this), _amount), "Transfer failed");
 
-        uint256 yesAddition = _amount / 2;
-        uint256 noAddition = _amount / 2;
-        market.yesCount += yesAddition;
-        market.noCount += noAddition;
-        market.constantProduct = market.yesCount * market.noCount;
-
         market.liquidity[msg.sender] += _amount;
         emit LiquidityAdded(_marketId, msg.sender, _amount);
     }
@@ -78,12 +66,6 @@ contract MarketMaker {
     function removeLiquidity(uint256 _marketId, uint256 _amount) public {
         Market storage market = markets[_marketId];
         require(market.liquidity[msg.sender] >= _amount, "Insufficient liquidity");
-
-        uint256 yesReduction = _amount / 2;
-        uint256 noReduction = _amount / 2;
-        market.yesCount -= yesReduction;
-        market.noCount -= noReduction;
-        market.constantProduct = market.yesCount * market.noCount;
 
         market.liquidity[msg.sender] -= _amount;
         require(collateralToken.transfer(msg.sender, _amount), "Transfer failed");
@@ -96,9 +78,8 @@ contract MarketMaker {
         require(!market.resolved, "Market is resolved");
         require(_outcomeIndex < 2, "Invalid outcome index");
 
-        uint256 price = _outcomeIndex == 0 
-            ? (market.constantProduct / (market.yesCount + _amount)) - market.noCount 
-            : (market.constantProduct / (market.noCount + _amount)) - market.yesCount;
+        // Implement a basic pricing mechanism
+        uint256 price = _amount + market.overround;
 
         // Transfer collateral tokens from buyer to contract
         require(collateralToken.transferFrom(msg.sender, address(this), price), "Transfer failed");
@@ -109,7 +90,6 @@ contract MarketMaker {
         } else {
             market.noCount += _amount;
         }
-        market.constantProduct = market.yesCount * market.noCount;
 
         emit OutcomeShareBought(_marketId, msg.sender, _outcomeIndex, _amount);
     }
@@ -119,9 +99,8 @@ contract MarketMaker {
         require(!market.resolved, "Market is resolved");
         require(_outcomeIndex < 2, "Invalid outcome index");
 
-        uint256 price = _outcomeIndex == 0 
-            ? market.noCount - (market.constantProduct / (market.yesCount - _amount)) 
-            : market.yesCount - (market.constantProduct / (market.noCount - _amount));
+        // Implement a basic pricing mechanism
+        uint256 price = _amount - market.overround;
 
         // Transfer collateral tokens from contract to seller
         require(collateralToken.transfer(msg.sender, price), "Transfer failed");
@@ -132,7 +111,6 @@ contract MarketMaker {
         } else {
             market.noCount -= _amount;
         }
-        market.constantProduct = market.yesCount * market.noCount;
 
         emit OutcomeShareSold(_marketId, msg.sender, _outcomeIndex, _amount);
     }
