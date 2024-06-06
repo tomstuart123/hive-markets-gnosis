@@ -1,6 +1,6 @@
 const { ethers } = require("ethers");
 require("dotenv").config();
-
+ 
 // Setup provider and wallet
 const provider = new ethers.JsonRpcProvider(`https://base-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`);
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
@@ -61,7 +61,10 @@ const runTests = async () => {
     const balanceAfterBuying = await collateralToken.balanceOf(wallet.address);
     console.log("Balance after buying outcome shares:", ethers.formatUnits(balanceAfterBuying, 18));
 
-
+    const yesPrice = await marketMaker.getCurrentPrice(marketId, 0, amount);
+    const noPrice = await marketMaker.getCurrentPrice(marketId, 1, amount);
+    console.log("Current price for 'yes' outcome:", ethers.formatUnits(yesPrice, 18));
+    console.log("Current price for 'no' outcome:", ethers.formatUnits(noPrice, 18));
     
     // Sell outcome shares
     const sellOutcomeTx = await marketMaker.sellOutcome(marketId, outcomeIndex, amount2); // Selling half the amount bought
@@ -88,6 +91,10 @@ const runTests = async () => {
     // Check liquidity
     const liquidity = await marketMaker.getMarketLiquidity(marketId, wallet.address);
     console.log("Liquidity provided by user:", ethers.formatUnits(liquidity, 18));
+  
+  
+  
+  
   } catch (error) {
     console.error("Error running tests:", error);
   }

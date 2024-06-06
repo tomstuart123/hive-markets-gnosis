@@ -87,7 +87,9 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 **Today's Progress**: made the market persistent between server restarts by storing the livemarket variable in our database. Next steps, I want to show more data in the front-end about the markets. Maybe initially how much liquidity is in the market. Second, how many shares have been bought. This will likely mean I need to return to the contract. Right now the liquidity pool and shares are seperate. There should probably be a link. Finally, Id like the front-end to be able to display old markets. 
 
 ### Day24
-**Today's Progress**: mostly research today. As mentioned, right now we buy/sell outcome shares but they don't create a price nor a probability. The different methods for doing this are https://docs.gnosis.io/conditionaltokens/docs/introduction3/. I'm going to go with CPMM as its simple and encourages liqudity. I've taken gpt's template for adding this functionality and pasted it in. I'll review and tweak it to my needs tomorrow
+**Today's Progress**: mostly research today. As mentioned, right now we buy/sell outcome shares but they dont create a price nor a probability. The different methods for doing this are CPMM/LS-LMSR. Im going to go with CPMM as its simple and encourages liqudity. Ive taken gpts template for adding this functionality and pasted it in. Ill review and tweak it to my needs tomorrow
+### Day25
+**Today's Progress**:getting a panic overflow error. Annoying. Going to pick it up when back from a long weekend. 
 
 TO DO IDEAS:
 Essentials for Later Development
