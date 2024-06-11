@@ -89,7 +89,22 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 ### Day24
 **Today's Progress**: mostly research today. As mentioned, right now we buy/sell outcome shares but they dont create a price nor a probability. The different methods for doing this are CPMM/LS-LMSR. Im going to go with CPMM as its simple and encourages liqudity. Ive taken gpts template for adding this functionality and pasted it in. Ill review and tweak it to my needs tomorrow
 ### Day25
-**Today's Progress**:getting a panic overflow error. Annoying. Going to pick it up when back from a long weekend. 
+**Today's Progress**: getting a panic overflow error. Annoying. Going to pick it up when back from a long weekend. 
+
+### Day26
+**Today's Progress**: none
+
+### Day27
+**Today's Progress**: none
+
+### Day28
+**Today's Progress**: none
+
+### Day29
+**Today's Progress**: none
+
+### Day30
+**Today's Progress**: back online after a weekend away. Still getting the error. After some time out, Im thinking of redoing my contract setup. Thisd mean a lot of redone work... but conditionaltoken wrapping etc is bloating my contracts. Too many bugs and errors. I need somethiing simpler. e.g. looking at copying this but adding liquidity - https://github.com/UMAprotocol/dev-quickstart-oov3/blob/master/src/PredictionMarket.sol
 
 TO DO IDEAS:
 Essentials for Later Development

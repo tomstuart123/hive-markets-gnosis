@@ -1,6 +1,6 @@
 const { ethers } = require("ethers");
 require("dotenv").config();
- 
+
 // Setup provider and wallet
 const provider = new ethers.JsonRpcProvider(`https://base-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`);
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
@@ -22,9 +22,9 @@ const runTests = async () => {
   try {
     // Example market ID and parameters
     const marketId = 1; // Assuming this is the first market
-    const amount2 = ethers.parseUnits("0.5", 18); // Amount of collateral tokens (1 token with 18 decimals)
+    const amount2 = ethers.parseUnits("0.5", 18); // Amount of collateral tokens (0.5 token with 18 decimals)
     const amount = ethers.parseUnits("1", 18); // Amount of collateral tokens (1 token with 18 decimals)
-    const totalAmount = ethers.parseUnits("3", 18);; // Assuming we need 3 times the amount for all operations
+    const totalAmount = ethers.parseUnits("3", 18); // Assuming we need 3 times the amount for all operations
   
     const initialBalance = await collateralToken.balanceOf(wallet.address);
     console.log("Initial balance:", ethers.formatUnits(initialBalance, 18));
@@ -61,11 +61,6 @@ const runTests = async () => {
     const balanceAfterBuying = await collateralToken.balanceOf(wallet.address);
     console.log("Balance after buying outcome shares:", ethers.formatUnits(balanceAfterBuying, 18));
 
-    const yesPrice = await marketMaker.getCurrentPrice(marketId, 0, amount);
-    const noPrice = await marketMaker.getCurrentPrice(marketId, 1, amount);
-    console.log("Current price for 'yes' outcome:", ethers.formatUnits(yesPrice, 18));
-    console.log("Current price for 'no' outcome:", ethers.formatUnits(noPrice, 18));
-    
     // Sell outcome shares
     const sellOutcomeTx = await marketMaker.sellOutcome(marketId, outcomeIndex, amount2); // Selling half the amount bought
     await sellOutcomeTx.wait();
@@ -84,6 +79,18 @@ const runTests = async () => {
     const balanceAfterRemovingLiquidity = await collateralToken.balanceOf(wallet.address);
     console.log("Balance after removing liquidity:", ethers.formatUnits(balanceAfterRemovingLiquidity, 18));
 
+    // Check current price of outcome shares
+    const currentPriceYes = await marketMaker.getCurrentPrice(marketId, 0, ethers.parseUnits("1", 18));
+    const currentPriceNo = await marketMaker.getCurrentPrice(marketId, 1, ethers.parseUnits("1", 18));
+    console.log("Current price of 'Yes' outcome shares:", ethers.formatUnits(currentPriceYes, 18));
+    console.log("Current price of 'No' outcome shares:", ethers.formatUnits(currentPriceNo, 18));
+
+    // Check probability of outcomes
+    const probabilityYes = await marketMaker.getProbability(marketId, 0);
+    const probabilityNo = await marketMaker.getProbability(marketId, 1);
+    console.log("Probability of 'Yes' outcome:", ethers.formatUnits(probabilityYes, 18));
+    console.log("Probability of 'No' outcome:", ethers.formatUnits(probabilityNo, 18));
+
     // Check market details
     const marketDetails = await marketMaker.getMarket(marketId);
     console.log("Market details:", marketDetails);
@@ -91,10 +98,6 @@ const runTests = async () => {
     // Check liquidity
     const liquidity = await marketMaker.getMarketLiquidity(marketId, wallet.address);
     console.log("Liquidity provided by user:", ethers.formatUnits(liquidity, 18));
-  
-  
-  
-  
   } catch (error) {
     console.error("Error running tests:", error);
   }
