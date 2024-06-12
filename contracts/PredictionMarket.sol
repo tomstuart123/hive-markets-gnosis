@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@uma/core/contracts/common/implementation/AddressWhitelist.sol";
 import "@uma/core/contracts/common/implementation/ExpandedERC20.sol";
 import "@uma/core/contracts/data-verification-mechanism/implementation/Constants.sol";
@@ -10,7 +10,10 @@ import "@uma/core/contracts/optimistic-oracle-v3/implementation/ClaimData.sol";
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
 
+
 contract PredictionMarket {
+    using SafeERC20 for IERC20;
+
     struct Market {
         bool resolved;
         bytes32 assertedOutcomeId;
@@ -113,7 +116,7 @@ contract PredictionMarket {
             outcome2: bytes(outcome2),
             description: bytes(description)
         });
-        if (reward > 0) currency.transferFrom(msg.sender, address(this), reward); // Transfer reward.
+        if (reward > 0) currency.safeTransferFrom(msg.sender, address(this), reward); // Pull reward.
 
         emit MarketInitialized(
             marketId,
@@ -189,7 +192,7 @@ contract PredictionMarket {
         market.outcome1Token.burn(msg.sender, outcome1Balance);
         market.outcome2Token.burn(msg.sender, outcome2Balance);
 
-        currency.transfer(msg.sender, payout);
+        currency.safeTransfer(msg.sender, payout);
         emit TokensSettled(marketId, msg.sender, payout, outcome1Balance, outcome2Balance);
 
         return payout;

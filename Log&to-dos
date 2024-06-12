@@ -106,6 +106,9 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 ### Day30
 **Today's Progress**: back online after a weekend away. Still getting the error. After some time out, Im thinking of redoing my contract setup. Thisd mean a lot of redone work... but conditionaltoken wrapping etc is bloating my contracts. Too many bugs and errors. I need somethiing simpler. e.g. looking at copying this but adding liquidity - https://github.com/UMAprotocol/dev-quickstart-oov3/blob/master/src/PredictionMarket.sol
 
+### Day31
+**Today's Progress**: Picked a new contract. but having massive version issues. My start from scratch in a new environment tomorrow to see if that helps
+
 TO DO IDEAS:
 Essentials for Later Development
 Persistent Data Storage:
