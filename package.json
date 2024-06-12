@@ -15,6 +15,7 @@
     "@types/jest": "^27.5.2",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.0",
+    "@uma/core": "^2.59.0",
     "axios": "^0.27.2",
     "chart.js": "4.2",
     "cors": "^2.8.5",

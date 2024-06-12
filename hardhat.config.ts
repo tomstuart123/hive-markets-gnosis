@@ -12,12 +12,21 @@ const config: HardhatUserConfig = {
         version: "0.8.24",
       },
       {
-        version: "0.5.0",
+        version: "0.8.20",
       },
       {
-        version: "0.5.1",
+        version: "0.8.16",
+      },
+      {
+        version: "0.8.0",
       },
     ],
+    overrides: {
+      "contracts/PredictionMarket.sol": {
+        version: "0.8.16",
+      },
+      
+    },
   },
   networks: {
     baseSepolia: {
@@ -28,5 +37,3 @@ const config: HardhatUserConfig = {
 };
 
 export default config;
-
-
