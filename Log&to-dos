@@ -109,6 +109,9 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 ### Day31
 **Today's Progress**: Picked a new contract. but having massive version issues. My start from scratch in a new environment tomorrow to see if that helps
 
+### Day32
+**Today's Progress**: I split the contract into two. the market functionality with manual resolve. And another contract to be turned on later for the oracle. This seems to have mitigated the contracts required and whichever version was screwing things up. Its compiling now so next step is to test deploying it/functions with scripts
+
 TO DO IDEAS:
 Essentials for Later Development
 Persistent Data Storage:

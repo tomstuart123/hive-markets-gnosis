@@ -1,6 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ethers";
+import "hardhat-contract-sizer";
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -13,6 +14,13 @@ const config: HardhatUserConfig = {
       { version: "0.8.16" },
       { version: "0.8.0" },
     ],
+  },
+  paths: {
+    sources: "./contracts",  // Specify the contracts directory
+  },
+  contractSizer: {
+    runOnCompile: true,
+    disambiguatePaths: false,
   },
   networks: {
     baseSepolia: {

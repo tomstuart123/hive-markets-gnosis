@@ -2,42 +2,30 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@uma/core/contracts/common/implementation/AddressWhitelist.sol";
 import "@uma/core/contracts/common/implementation/ExpandedERC20.sol";
-import "@uma/core/contracts/data-verification-mechanism/implementation/Constants.sol";
 import "@uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
-import "@uma/core/contracts/optimistic-oracle-v3/implementation/ClaimData.sol";
-import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
-import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
-
 
 contract PredictionMarket {
     using SafeERC20 for IERC20;
 
     struct Market {
-        bool resolved;
+        bytes32 outcome1;
+        bytes32 outcome2;
+        bytes description;
         bytes32 assertedOutcomeId;
         ExpandedERC20 outcome1Token;
         ExpandedERC20 outcome2Token;
         uint256 reward;
         uint256 requiredBond;
-        bytes outcome1;
-        bytes outcome2;
-        bytes description;
+        bool resolved;
     }
 
-    struct AssertedMarket {
-        address asserter;
-        bytes32 marketId;
-    }
+
 
     mapping(bytes32 => Market) public markets;
-    mapping(bytes32 => AssertedMarket) public assertedMarkets;
 
     FinderInterface public finder;
     IERC20 public currency;
-    OptimisticOracleV3Interface public oo;
-    bool public oracleEnabled;
     address public owner;
 
     event MarketInitialized(
@@ -50,7 +38,6 @@ contract PredictionMarket {
         uint256 reward,
         uint256 requiredBond
     );
-    event MarketAsserted(bytes32 indexed marketId, string assertedOutcome, bytes32 indexed assertionId);
     event MarketResolved(bytes32 indexed marketId);
     event TokensCreated(bytes32 indexed marketId, address indexed account, uint256 tokensCreated);
     event TokensRedeemed(bytes32 indexed marketId, address indexed account, uint256 tokensRedeemed);
@@ -67,43 +54,36 @@ contract PredictionMarket {
         _;
     }
 
-    constructor(
-        address _finder,
-        address _currency,
-        address _optimisticOracleV3
-    ) {
+    constructor(address _finder, address _currency) {
         finder = FinderInterface(_finder);
-        require(_getCollateralWhitelist().isOnWhitelist(_currency), "Unsupported currency");
         currency = IERC20(_currency);
-        oo = OptimisticOracleV3Interface(_optimisticOracleV3);
-        oracleEnabled = false; // Initially disable oracle functionality
         owner = msg.sender;
     }
 
-    function setOracleEnabled(bool _enabled) external onlyOwner {
-        oracleEnabled = _enabled;
+    function _createToken(bytes32 name, bytes32 symbol) internal returns (ExpandedERC20) {
+        ExpandedERC20 token = new ExpandedERC20(string(abi.encodePacked(name)), string(abi.encodePacked(symbol)), 18);
+        token.addMinter(address(this));
+        token.addBurner(address(this));
+        return token;
     }
 
     function initializeMarket(
-        string memory outcome1,
-        string memory outcome2,
-        string memory description,
+        bytes32 outcome1,
+        bytes32 outcome2,
+        bytes memory description,
         uint256 reward,
         uint256 requiredBond
     ) public onlyOwner returns (bytes32 marketId) {
-        require(bytes(outcome1).length > 0, "Empty first outcome");
-        require(bytes(outcome2).length > 0, "Empty second outcome");
-        require(keccak256(bytes(outcome1)) != keccak256(bytes(outcome2)), "Outcomes are the same");
-        require(bytes(description).length > 0, "Empty description");
+        require(outcome1 != bytes32(0), "Empty first outcome");
+        require(outcome2 != bytes32(0), "Empty second outcome");
+        require(outcome1 != outcome2, "Outcomes are the same");
+        require(description.length > 0, "Empty description");
+        
         marketId = keccak256(abi.encode(block.number, description));
-        require(markets[marketId].outcome1Token == ExpandedERC20(address(0)), "Market already exists");
+        require(address(markets[marketId].outcome1Token) == address(0), "Market already exists");
 
-        ExpandedERC20 outcome1Token = new ExpandedERC20(string(abi.encodePacked(outcome1, " Token")), "O1T", 18);
-        ExpandedERC20 outcome2Token = new ExpandedERC20(string(abi.encodePacked(outcome2, " Token")), "O2T", 18);
-        outcome1Token.addMinter(address(this));
-        outcome2Token.addMinter(address(this));
-        outcome1Token.addBurner(address(this));
-        outcome2Token.addBurner(address(this));
+        ExpandedERC20 outcome1Token = _createToken(outcome1, "O1T");
+        ExpandedERC20 outcome2Token = _createToken(outcome2, "O2T");
 
         markets[marketId] = Market({
             resolved: false,
@@ -112,17 +92,20 @@ contract PredictionMarket {
             outcome2Token: outcome2Token,
             reward: reward,
             requiredBond: requiredBond,
-            outcome1: bytes(outcome1),
-            outcome2: bytes(outcome2),
-            description: bytes(description)
+            outcome1: outcome1,
+            outcome2: outcome2,
+            description: description
         });
-        if (reward > 0) currency.safeTransferFrom(msg.sender, address(this), reward); // Pull reward.
+
+        if (reward > 0) {
+            currency.safeTransferFrom(msg.sender, address(this), reward); // Pull reward.
+        }
 
         emit MarketInitialized(
             marketId,
-            outcome1,
-            outcome2,
-            description,
+            string(abi.encodePacked(outcome1)),
+            string(abi.encodePacked(outcome2)),
+            string(description),
             address(outcome1Token),
             address(outcome2Token),
             reward,
@@ -130,19 +113,16 @@ contract PredictionMarket {
         );
     }
 
-    function assertMarket(bytes32 marketId, string memory assertedOutcome) public returns (bytes32 assertionId) {
-        require(oracleEnabled, "Oracle functionality not enabled"); // Check if oracle is enabled
-        // Logic for assertion using Optimistic Oracle...
-    }
 
-    function manualResolveMarket(bytes32 marketId, string memory assertedOutcome) public onlyOwner {
+
+    function manualResolveMarket(bytes32 marketId, bytes32 assertedOutcome) public onlyOwner {
         Market storage market = markets[marketId];
-        require(market.outcome1Token != ExpandedERC20(address(0)), "Market does not exist");
+        require(address(market.outcome1Token) != address(0), "Market does not exist");
 
-        bytes32 assertedOutcomeId = keccak256(bytes(assertedOutcome));
+        bytes32 assertedOutcomeId = keccak256(abi.encodePacked(assertedOutcome));
         require(
-            assertedOutcomeId == keccak256(market.outcome1) ||
-            assertedOutcomeId == keccak256(market.outcome2),
+            assertedOutcomeId == keccak256(abi.encodePacked(market.outcome1)) ||
+            assertedOutcomeId == keccak256(abi.encodePacked(market.outcome2)),
             "Invalid asserted outcome"
         );
 
@@ -151,6 +131,7 @@ contract PredictionMarket {
 
         emit MarketResolved(marketId);
     }
+
 
     function createTokens(bytes32 marketId, uint256 amount) public {
         Market storage market = markets[marketId];
@@ -181,24 +162,20 @@ contract PredictionMarket {
         uint256 outcome2Balance = market.outcome2Token.balanceOf(msg.sender);
 
         uint256 payout;
-        if (market.assertedOutcomeId == keccak256(market.outcome1)) {
+        if (market.assertedOutcomeId == market.outcome1) {
             payout = outcome1Balance;
-        } else if (market.assertedOutcomeId == keccak256(market.outcome2)) {
+        } else if (market.assertedOutcomeId == market.outcome2) {
             payout = outcome2Balance;
         } else {
             payout = 0;
         }
 
-        market.outcome1Token.burn(msg.sender, outcome1Balance);
-        market.outcome2Token.burn(msg.sender, outcome2Balance);
+        market.outcome1Token.burnFrom(msg.sender, outcome1Balance);
+        market.outcome2Token.burnFrom(msg.sender, outcome2Balance);
 
         currency.safeTransfer(msg.sender, payout);
         emit TokensSettled(marketId, msg.sender, payout, outcome1Balance, outcome2Balance);
 
         return payout;
-    }
-
-    function _getCollateralWhitelist() internal view returns (AddressWhitelist) {
-        return AddressWhitelist(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
     }
 }
