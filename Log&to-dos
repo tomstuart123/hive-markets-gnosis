@@ -112,6 +112,13 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 ### Day32
 **Today's Progress**: I split the contract into two. the market functionality with manual resolve. And another contract to be turned on later for the oracle. This seems to have mitigated the contracts required and whichever version was screwing things up. Its compiling now so next step is to test deploying it/functions with scripts
 
+### Day33
+**Today's Progress**: deploy.js failed due to contract size. I had to move some variables to bytes32 (could bite me later) and not compile the oracle to get it under the limit. It now deploys. Next up is test-market.js
+
+### Day34
+**Today's Progress**: test-market.js
+
+
 TO DO IDEAS:
 Essentials for Later Development
 Persistent Data Storage:

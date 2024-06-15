@@ -9,18 +9,16 @@ contract PredictionMarket {
     using SafeERC20 for IERC20;
 
     struct Market {
-        bytes32 outcome1;
-        bytes32 outcome2;
-        bytes description;
+        bool resolved;
         bytes32 assertedOutcomeId;
         ExpandedERC20 outcome1Token;
         ExpandedERC20 outcome2Token;
         uint256 reward;
         uint256 requiredBond;
-        bool resolved;
+        bytes outcome1;
+        bytes outcome2;
+        bytes description;
     }
-
-
 
     mapping(bytes32 => Market) public markets;
 
@@ -60,25 +58,25 @@ contract PredictionMarket {
         owner = msg.sender;
     }
 
-    function _createToken(bytes32 name, bytes32 symbol) internal returns (ExpandedERC20) {
-        ExpandedERC20 token = new ExpandedERC20(string(abi.encodePacked(name)), string(abi.encodePacked(symbol)), 18);
+    function _createToken(string memory name, string memory symbol) internal returns (ExpandedERC20) {
+        ExpandedERC20 token = new ExpandedERC20(name, symbol, 18);
         token.addMinter(address(this));
         token.addBurner(address(this));
         return token;
     }
 
     function initializeMarket(
-        bytes32 outcome1,
-        bytes32 outcome2,
-        bytes memory description,
+        string memory outcome1,
+        string memory outcome2,
+        string memory description,
         uint256 reward,
         uint256 requiredBond
     ) public onlyOwner returns (bytes32 marketId) {
-        require(outcome1 != bytes32(0), "Empty first outcome");
-        require(outcome2 != bytes32(0), "Empty second outcome");
-        require(outcome1 != outcome2, "Outcomes are the same");
-        require(description.length > 0, "Empty description");
-        
+        require(bytes(outcome1).length > 0, "Empty first outcome");
+        require(bytes(outcome2).length > 0, "Empty second outcome");
+        require(keccak256(bytes(outcome1)) != keccak256(bytes(outcome2)), "Outcomes are the same");
+        require(bytes(description).length > 0, "Empty description");
+
         marketId = keccak256(abi.encode(block.number, description));
         require(address(markets[marketId].outcome1Token) == address(0), "Market already exists");
 
@@ -92,9 +90,9 @@ contract PredictionMarket {
             outcome2Token: outcome2Token,
             reward: reward,
             requiredBond: requiredBond,
-            outcome1: outcome1,
-            outcome2: outcome2,
-            description: description
+            outcome1: bytes(outcome1),
+            outcome2: bytes(outcome2),
+            description: bytes(description)
         });
 
         if (reward > 0) {
@@ -103,9 +101,9 @@ contract PredictionMarket {
 
         emit MarketInitialized(
             marketId,
-            string(abi.encodePacked(outcome1)),
-            string(abi.encodePacked(outcome2)),
-            string(description),
+            outcome1,
+            outcome2,
+            description,
             address(outcome1Token),
             address(outcome2Token),
             reward,
@@ -113,16 +111,14 @@ contract PredictionMarket {
         );
     }
 
-
-
-    function manualResolveMarket(bytes32 marketId, bytes32 assertedOutcome) public onlyOwner {
+    function manualResolveMarket(bytes32 marketId, string memory assertedOutcome) public onlyOwner {
         Market storage market = markets[marketId];
         require(address(market.outcome1Token) != address(0), "Market does not exist");
 
-        bytes32 assertedOutcomeId = keccak256(abi.encodePacked(assertedOutcome));
+        bytes32 assertedOutcomeId = keccak256(bytes(assertedOutcome));
         require(
-            assertedOutcomeId == keccak256(abi.encodePacked(market.outcome1)) ||
-            assertedOutcomeId == keccak256(abi.encodePacked(market.outcome2)),
+            assertedOutcomeId == keccak256(market.outcome1) ||
+            assertedOutcomeId == keccak256(market.outcome2),
             "Invalid asserted outcome"
         );
 
@@ -131,7 +127,6 @@ contract PredictionMarket {
 
         emit MarketResolved(marketId);
     }
-
 
     function createTokens(bytes32 marketId, uint256 amount) public {
         Market storage market = markets[marketId];
@@ -162,9 +157,9 @@ contract PredictionMarket {
         uint256 outcome2Balance = market.outcome2Token.balanceOf(msg.sender);
 
         uint256 payout;
-        if (market.assertedOutcomeId == market.outcome1) {
+        if (market.assertedOutcomeId == keccak256(market.outcome1)) {
             payout = outcome1Balance;
-        } else if (market.assertedOutcomeId == market.outcome2) {
+        } else if (market.assertedOutcomeId == keccak256(market.outcome2)) {
             payout = outcome2Balance;
         } else {
             payout = 0;

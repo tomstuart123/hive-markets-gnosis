@@ -6,98 +6,95 @@ const provider = new ethers.JsonRpcProvider(`https://base-sepolia.g.alchemy.com/
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
 // Contract addresses and ABIs
-const conditionalTokensWrapperAddress = process.env.CONDITIONAL_TOKENS_WRAPPER_CONTRACT_ADDRESS;
-const marketMakerAddress = process.env.MARKET_MAKER_CONTRACT_ADDRESS;
-const collateralTokenAddress = process.env.TOKEN_CONTRACT_ADDRESS;
+const predictionMarketAddress = process.env.PREDICTION_MARKET_CONTRACT_ADDRESS;
+const tokenAddress = process.env.TOKEN_CONTRACT_ADDRESS;
 
-const ConditionalTokensWrapperArtifact = require('../artifacts/contracts/ConditionalTokensWrapper.sol/ConditionalTokensWrapper.json');
-const MarketMakerArtifact = require('../artifacts/contracts/MarketMaker.sol/MarketMaker.json');
-const ERC20Artifact = require('../artifacts/contracts/IERC20.sol/IERC20.json');
+const PredictionMarketArtifact = require('../artifacts/contracts/PredictionMarket.sol/PredictionMarket.json');
+const ERC20Artifact = require('../artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.json');
 
-const conditionalTokensWrapper = new ethers.Contract(conditionalTokensWrapperAddress, ConditionalTokensWrapperArtifact.abi, wallet);
-const marketMaker = new ethers.Contract(marketMakerAddress, MarketMakerArtifact.abi, wallet);
-const collateralToken = new ethers.Contract(collateralTokenAddress, ERC20Artifact.abi, wallet);
+const predictionMarket = new ethers.Contract(predictionMarketAddress, PredictionMarketArtifact.abi, wallet);
+const collateralToken = new ethers.Contract(tokenAddress, ERC20Artifact.abi, wallet);
 
 const runTests = async () => {
   try {
-    // Example market ID and parameters
-    const marketId = 1; // Assuming this is the first market
-    const amount2 = ethers.parseUnits("0.5", 18); // Amount of collateral tokens (0.5 token with 18 decimals)
-    const amount = ethers.parseUnits("1", 18); // Amount of collateral tokens (1 token with 18 decimals)
-    const totalAmount = ethers.parseUnits("3", 18); // Assuming we need 3 times the amount for all operations
-  
+    // Example market parameters
+    const outcome1 = "Outcome 1";
+    const outcome2 = "Outcome 2";
+    const description = "Test market description";
+    const reward = ethers.parseUnits("1", 18); // Reward amount (10 tokens with 18 decimals)
+    const requiredBond = ethers.parseUnits("4", 18); // Required bond amount (5 tokens with 18 decimals)
+    const totalAmount = ethers.parseUnits("5", 18); // Total amount of collateral tokens to be used in tests
+
+    // Log initial balance
     const initialBalance = await collateralToken.balanceOf(wallet.address);
     console.log("Initial balance:", ethers.formatUnits(initialBalance, 18));
 
-    // Log initial allowance
-    const initialAllowance = await collateralToken.allowance(wallet.address, marketMakerAddress);
-    console.log("Initial allowance:", ethers.formatUnits(initialAllowance, 18));
-
-    // Approve collateral tokens for market maker
-    const approveTx = await collateralToken.approve(marketMakerAddress, totalAmount);
+    // Approve collateral tokens for Prediction Market
+    const approveTx = await collateralToken.approve(predictionMarketAddress, totalAmount);
     await approveTx.wait();
     console.log("Collateral tokens approved:", approveTx.hash);
 
     // Log post-approval allowance
-    const postApprovalAllowance = await collateralToken.allowance(wallet.address, marketMakerAddress);
+    const postApprovalAllowance = await collateralToken.allowance(wallet.address, predictionMarketAddress);
     console.log("Post-approval allowance:", ethers.formatUnits(postApprovalAllowance, 18));
 
-    // Add liquidity to the market
-    const addLiquidityTx = await marketMaker.addLiquidity(marketId, amount);
-    await addLiquidityTx.wait();
-    console.log("Liquidity added to the market:", addLiquidityTx.hash);
+    // Initialize market
+    const initializeMarketTx = await predictionMarket.initializeMarket(
+      outcome1,
+      outcome2,
+      description,
+      reward,
+      requiredBond
+    );
+    await initializeMarketTx.wait();
+    console.log("Market initialized:", initializeMarketTx.hash);
 
-    // Log balance after adding liquidity
-    const balanceAfterLiquidity = await collateralToken.balanceOf(wallet.address);
-    console.log("Balance after adding liquidity:", ethers.formatUnits(balanceAfterLiquidity, 18));
+     // Retrieve the market ID from the logs
+     const receipt = await provider.getTransactionReceipt(initializeMarketTx.hash);
+     const event = receipt.logs.map(log => {
+      try {
+        return predictionMarket.interface.parseLog(log);
+      } catch (error) {
+        return null;
+      }
+    }).find(event => event && event.name === 'MarketInitialized');
 
-    // Buy outcome shares
-    const outcomeIndex = 0; // 0 for 'yes' outcome
-    const buyOutcomeTx = await marketMaker.buyOutcome(marketId, outcomeIndex, amount);
-    await buyOutcomeTx.wait();
-    console.log("Outcome shares bought:", buyOutcomeTx.hash);
+    if (!event) {
+      throw new Error('MarketInitialized event not found in logs');
+    }
 
-    // Log balance after buying outcome shares
-    const balanceAfterBuying = await collateralToken.balanceOf(wallet.address);
-    console.log("Balance after buying outcome shares:", ethers.formatUnits(balanceAfterBuying, 18));
+    const marketId = event.args.marketId;
 
-    // Sell outcome shares
-    const sellOutcomeTx = await marketMaker.sellOutcome(marketId, outcomeIndex, amount2); // Selling half the amount bought
-    await sellOutcomeTx.wait();
-    console.log("Outcome shares sold:", sellOutcomeTx.hash);
 
-    // Log balance after selling outcome shares
-    const balanceAfterSelling = await collateralToken.balanceOf(wallet.address);
-    console.log("Balance after selling outcome shares:", ethers.formatUnits(balanceAfterSelling, 18));
+    // Create tokens
+    const amount = ethers.parseUnits("1", 18); // Amount of tokens to create (1 token with 18 decimals)
+    const createTokensTx = await predictionMarket.createTokens(marketId, amount);
+    await createTokensTx.wait();
+    console.log("Tokens created:", createTokensTx.hash);
 
-    // Remove liquidity from the market
-    const removeLiquidityTx = await marketMaker.removeLiquidity(marketId, amount2); // Removing half the initial liquidity
-    await removeLiquidityTx.wait();
-    console.log("Liquidity removed from the market:", removeLiquidityTx.hash);
+    // Redeem tokens
+    const redeemTokensTx = await predictionMarket.redeemTokens(marketId, amount);
+    await redeemTokensTx.wait();
+    console.log("Tokens redeemed:", redeemTokensTx.hash);
 
-    // Log balance after removing liquidity
-    const balanceAfterRemovingLiquidity = await collateralToken.balanceOf(wallet.address);
-    console.log("Balance after removing liquidity:", ethers.formatUnits(balanceAfterRemovingLiquidity, 18));
+    // Manually resolve the market
+    const manualResolveMarketTx = await predictionMarket.manualResolveMarket(marketId, outcome1);
+    await manualResolveMarketTx.wait();
+    console.log("Market resolved:", manualResolveMarketTx.hash);
 
-    // Check current price of outcome shares
-    const currentPriceYes = await marketMaker.getCurrentPrice(marketId, 0, ethers.parseUnits("1", 18));
-    const currentPriceNo = await marketMaker.getCurrentPrice(marketId, 1, ethers.parseUnits("1", 18));
-    console.log("Current price of 'Yes' outcome shares:", ethers.formatUnits(currentPriceYes, 18));
-    console.log("Current price of 'No' outcome shares:", ethers.formatUnits(currentPriceNo, 18));
+    // Settle and get payout
+    const settleAndGetPayoutTx = await predictionMarket.settleAndGetPayout(marketId);
+    await settleAndGetPayoutTx.wait();
+    console.log("Payout settled:", settleAndGetPayoutTx.hash);
 
-    // Check probability of outcomes
-    const probabilityYes = await marketMaker.getProbability(marketId, 0);
-    const probabilityNo = await marketMaker.getProbability(marketId, 1);
-    console.log("Probability of 'Yes' outcome:", ethers.formatUnits(probabilityYes, 18));
-    console.log("Probability of 'No' outcome:", ethers.formatUnits(probabilityNo, 18));
+    // Check final balance
+    const finalBalance = await collateralToken.balanceOf(wallet.address);
+    console.log("Final balance:", ethers.formatUnits(finalBalance, 18));
 
     // Check market details
-    const marketDetails = await marketMaker.getMarket(marketId);
+    const marketDetails = await predictionMarket.markets(marketId);
     console.log("Market details:", marketDetails);
 
-    // Check liquidity
-    const liquidity = await marketMaker.getMarketLiquidity(marketId, wallet.address);
-    console.log("Liquidity provided by user:", ethers.formatUnits(liquidity, 18));
   } catch (error) {
     console.error("Error running tests:", error);
   }
