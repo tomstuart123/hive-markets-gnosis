@@ -116,7 +116,13 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 **Today's Progress**: deploy.js failed due to contract size. I had to move some variables to bytes32 (could bite me later) and not compile the oracle to get it under the limit. It now deploys. Next up is test-market.js
 
 ### Day34
-**Today's Progress**: test-market.js
+**Today's Progress**: test-market.js showed me that changing to bytes32 would be horrendous. I changed it back. Hit some other snags on test-market.js but worked through them. Now contract deploys and runs. Before I move on, next step I want to review the required bond / reward. I mean, if Im not using an oracle yet, this isnt necessary
+
+### Day35
+**Today's Progress**: day off
+
+### Day36
+**Today's Progress**: Okay so a good day. Hit contract size issues again. Managed to cut the contract size sdown by half by moving createToken function to a new MarketManager.sol. I then added a new contract for trading and liquidity so our server can come up with the outcometoken price. These contracts all deploy now. I still need to test them
 
 
 TO DO IDEAS:

@@ -1,6 +1,4 @@
-
-
-// const { ethers } = require("hardhat");
+const { ethers } = require("hardhat");
 
 async function main() {
   const [deployer] = await ethers.getSigners();
@@ -10,15 +8,20 @@ async function main() {
   const finderAddress = process.env.FINDER_CONTRACT_ADDRESS;
   const currencyAddress = process.env.TOKEN_CONTRACT_ADDRESS;
 
-  console.log("Deploying VotePower contract...");
-  const votePower = await ethers.deployContract("VotePower", ["0x0a5730C865a1804e773FF5cF864862301f0Cef41"]);
-  await votePower.waitForDeployment();
-  console.log("VotePower contract deployed to:", votePower.target);
+  console.log("Deploying MarketManager contract...");
+  const MarketManager = await ethers.deployContract("MarketManager");
+  await MarketManager.waitForDeployment();
+  console.log("MarketManager contract deployed to:", MarketManager.target);
 
-  // Compile and deploy the PredictionMarket contract
-  const PredictionMarket = await ethers.deployContract("PredictionMarket", [finderAddress, currencyAddress], { from: deployer.address });
+  console.log("Deploying PredictionMarket contract...");
+  const PredictionMarket = await ethers.deployContract("PredictionMarket", [finderAddress, currencyAddress, MarketManager.target]);
   await PredictionMarket.waitForDeployment();
-  console.log("PredictionMarket deployed to:", PredictionMarket.target);
+  console.log("PredictionMarket contract deployed to:", PredictionMarket.target);
+
+  console.log("Deploying TradingAndLiquidity contract...");
+  const TradingAndLiquidity = await ethers.deployContract("TradingAndLiquidity", [PredictionMarket.target, currencyAddress]);
+  await TradingAndLiquidity.waitForDeployment();
+  console.log("TradingAndLiquidity contract deployed to:", TradingAndLiquidity.target);
 }
 
 main()

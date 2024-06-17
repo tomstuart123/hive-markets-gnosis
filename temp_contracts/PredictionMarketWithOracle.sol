@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../PredictionMarket.sol";
+import "../contracts/PredictionMarket.sol";
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+import "./MarketManager.sol";
 
 contract PredictionMarketWithOracle is PredictionMarket {
     using SafeERC20 for IERC20;
@@ -15,8 +16,9 @@ contract PredictionMarketWithOracle is PredictionMarket {
     constructor(
         address _finder,
         address _currency,
-        address _optimisticOracleV3
-    ) PredictionMarket(_finder, _currency) {
+        address _optimisticOracleV3,
+        address _marketManager
+    ) PredictionMarket(_finder, _currency, _marketManager) {
         oo = OptimisticOracleV3Interface(_optimisticOracleV3);
         oracleEnabled = false; // Initially disable oracle functionality
     }
@@ -49,6 +51,4 @@ contract PredictionMarketWithOracle is PredictionMarket {
         emit MarketAsserted(marketId, assertedOutcome, assertionId);
         emit MarketResolved(marketId);
     }
-
-
 }

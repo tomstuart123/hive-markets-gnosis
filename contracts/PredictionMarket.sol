@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@uma/core/contracts/common/implementation/ExpandedERC20.sol";
 import "@uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
+import "./MarketManager.sol";
 
 contract PredictionMarket {
     using SafeERC20 for IERC20;
@@ -25,6 +26,7 @@ contract PredictionMarket {
     FinderInterface public finder;
     IERC20 public currency;
     address public owner;
+    MarketManager public marketManager;
 
     event MarketInitialized(
         bytes32 indexed marketId,
@@ -52,17 +54,11 @@ contract PredictionMarket {
         _;
     }
 
-    constructor(address _finder, address _currency) {
+    constructor(address _finder, address _currency, address _marketManager) {
         finder = FinderInterface(_finder);
         currency = IERC20(_currency);
         owner = msg.sender;
-    }
-
-    function _createToken(string memory name, string memory symbol) internal returns (ExpandedERC20) {
-        ExpandedERC20 token = new ExpandedERC20(name, symbol, 18);
-        token.addMinter(address(this));
-        token.addBurner(address(this));
-        return token;
+        marketManager = MarketManager(_marketManager);
     }
 
     function initializeMarket(
@@ -80,8 +76,8 @@ contract PredictionMarket {
         marketId = keccak256(abi.encode(block.number, description));
         require(address(markets[marketId].outcome1Token) == address(0), "Market already exists");
 
-        ExpandedERC20 outcome1Token = _createToken(outcome1, "O1T");
-        ExpandedERC20 outcome2Token = _createToken(outcome2, "O2T");
+        ExpandedERC20 outcome1Token = marketManager.createToken(outcome1, "O1T");
+        ExpandedERC20 outcome2Token = marketManager.createToken(outcome2, "O2T");
 
         markets[marketId] = Market({
             resolved: false,
@@ -172,5 +168,21 @@ contract PredictionMarket {
         emit TokensSettled(marketId, msg.sender, payout, outcome1Balance, outcome2Balance);
 
         return payout;
+    }
+    
+    // New getter function
+    function getMarket(bytes32 marketId) external view returns (bool, bytes32, ExpandedERC20, ExpandedERC20, uint256, uint256, bytes memory, bytes memory, bytes memory) {
+        Market storage market = markets[marketId];
+        return (
+            market.resolved,
+            market.assertedOutcomeId,
+            market.outcome1Token,
+            market.outcome2Token,
+            market.reward,
+            market.requiredBond,
+            market.outcome1,
+            market.outcome2,
+            market.description
+        );
     }
 }
