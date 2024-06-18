@@ -7,12 +7,15 @@ const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
 // Contract addresses and ABIs
 const predictionMarketAddress = process.env.PREDICTION_MARKET_CONTRACT_ADDRESS;
+const tradingAndLiquidityAddress = process.env.TRADING_AND_LIQUIDITY_CONTRACT_ADDRESS;
 const tokenAddress = process.env.TOKEN_CONTRACT_ADDRESS;
 
 const PredictionMarketArtifact = require('../artifacts/contracts/PredictionMarket.sol/PredictionMarket.json');
+const TradingAndLiquidityArtifact = require('../artifacts/contracts/TradingAndLiquidity.sol/TradingAndLiquidity.json');
 const ERC20Artifact = require('../artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.json');
 
 const predictionMarket = new ethers.Contract(predictionMarketAddress, PredictionMarketArtifact.abi, wallet);
+const tradingAndLiquidity = new ethers.Contract(tradingAndLiquidityAddress, TradingAndLiquidityArtifact.abi, wallet);
 const collateralToken = new ethers.Contract(tokenAddress, ERC20Artifact.abi, wallet);
 
 const runTests = async () => {
@@ -21,9 +24,9 @@ const runTests = async () => {
     const outcome1 = "Outcome 1";
     const outcome2 = "Outcome 2";
     const description = "Test market description";
-    const reward = ethers.parseUnits("1", 18); // Reward amount (10 tokens with 18 decimals)
-    const requiredBond = ethers.parseUnits("4", 18); // Required bond amount (5 tokens with 18 decimals)
-    const totalAmount = ethers.parseUnits("5", 18); // Total amount of collateral tokens to be used in tests
+    const reward = ethers.parseUnits("1", 18); // Reward amount (1 token with 18 decimals)
+    const requiredBond = ethers.parseUnits("4", 18); // Required bond amount (4 tokens with 18 decimals)
+    const totalAmount = ethers.parseUnits("20", 18); // Total amount of collateral tokens to be used in tests
 
     // Log initial balance
     const initialBalance = await collateralToken.balanceOf(wallet.address);
@@ -49,9 +52,9 @@ const runTests = async () => {
     await initializeMarketTx.wait();
     console.log("Market initialized:", initializeMarketTx.hash);
 
-     // Retrieve the market ID from the logs
-     const receipt = await provider.getTransactionReceipt(initializeMarketTx.hash);
-     const event = receipt.logs.map(log => {
+    // Retrieve the market ID from the logs
+    const receipt = await provider.getTransactionReceipt(initializeMarketTx.hash);
+    const event = receipt.logs.map(log => {
       try {
         return predictionMarket.interface.parseLog(log);
       } catch (error) {
@@ -65,12 +68,31 @@ const runTests = async () => {
 
     const marketId = event.args.marketId;
 
-
     // Create tokens
     const amount = ethers.parseUnits("1", 18); // Amount of tokens to create (1 token with 18 decimals)
     const createTokensTx = await predictionMarket.createTokens(marketId, amount);
     await createTokensTx.wait();
     console.log("Tokens created:", createTokensTx.hash);
+
+    // Add liquidity
+    const addLiquidityTx = await tradingAndLiquidity.addLiquidity(marketId, amount);
+    await addLiquidityTx.wait();
+    console.log("Liquidity added:", addLiquidityTx.hash);
+
+    // Buy outcome shares
+    const buyOutcomeTx = await tradingAndLiquidity.buyOutcomeShares(marketId, 0, amount); // Buying 'Outcome 1' shares
+    await buyOutcomeTx.wait();
+    console.log("Outcome shares bought:", buyOutcomeTx.hash);
+
+    // Sell outcome shares
+    const sellOutcomeTx = await tradingAndLiquidity.sellOutcomeShares(marketId, 0, amount); // Selling 'Outcome 1' shares
+    await sellOutcomeTx.wait();
+    console.log("Outcome shares sold:", sellOutcomeTx.hash);
+
+    // Remove liquidity
+    const removeLiquidityTx = await tradingAndLiquidity.removeLiquidity(marketId, amount);
+    await removeLiquidityTx.wait();
+    console.log("Liquidity removed:", removeLiquidityTx.hash);
 
     // Redeem tokens
     const redeemTokensTx = await predictionMarket.redeemTokens(marketId, amount);
