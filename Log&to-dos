@@ -125,7 +125,7 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 **Today's Progress**: Okay so a good day. Hit contract size issues again. Managed to cut the contract size sdown by half by moving createToken function to a new MarketManager.sol. I then added a new contract for trading and liquidity so our server can come up with the outcometoken price. These contracts all deploy now. I still need to test them next
 
 ### Day37
-**Today's Progress**:hit another wall. Realised liquidityandtrading wasn't correct and replicated a lot of bad funcitonality. Made me question my approach overall again. Will pick up tomorrow
+**Today's Progress**:hit another wall. Realised liquidityandtrading wasnt correct and replicated a lot of bad funcitonality. Made me question my approach overall again. Will pick up tomorrow
 
 TO DO IDEAS:
 Essentials for Later Development
