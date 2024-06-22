@@ -127,9 +127,12 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 ### Day37
 **Today's Progress**:hit another wall. Realised liquidityandtrading wasnt correct and replicated a lot of bad funcitonality. Made me question my approach overall again. Will pick up tomorrow
 
-### Day38/9
+### Day38+ 39
 **Today's Progress**:- so Ive gone back to gnosis contracts. I also think I need to spend some time doing the tutorial with them pre integrating here. Going to create a new repo in 100-days-of-code to do this tutorial. Will leave daily notes there for now and come back here when done - https://docs.gnosis.io/conditionaltokens/docs/pmtutorial3'
 [main 799084f] so Ive gone back to gnosis contr
+
+### Day40 + 41 :
+**Today's Progress**: I ended up staying in this repo and redeploying the gnosis contracts here. Took ages and tonnes of tweaks to make the contracts work with ethersv8 and new OZ. It compiles at least now and added a solidity optimiser to fix size. Tomorrow will pick up deploy.js / test-market.js. I'm sure there will be more bugs. I'm changing more of these gnosis contracts than I would like so will pay a dev to review the changes at some point
 
 TO DO IDEAS:
 Essentials for Later Development

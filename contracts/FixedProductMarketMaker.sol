@@ -1,23 +1,21 @@
-pragma solidity ^0.5.1;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
 
-import { SafeMath } from "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import { IERC20 } from "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import { ConditionalTokens } from "@gnosis.pm/conditional-tokens-contracts/contracts/ConditionalTokens.sol";
-import { CTHelpers } from "@gnosis.pm/conditional-tokens-contracts/contracts/CTHelpers.sol";
-import { ERC1155TokenReceiver } from "@gnosis.pm/conditional-tokens-contracts/contracts/ERC1155/ERC1155TokenReceiver.sol";
-import { ERC20 } from "./ERC20.sol";
-
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ConditionalTokens } from "./ConditionalTokens.sol";
+import { CTHelpers } from "./dependencies/CTHelpers.sol";
+import { ERC1155Receiver } from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 library CeilDiv {
     // calculates ceil(x/y)
     function ceildiv(uint x, uint y) internal pure returns (uint) {
-        if(x > 0) return ((x - 1) / y) + 1;
+        if (x > 0) return ((x - 1) / y) + 1;
         return x / y;
     }
 }
 
-
-contract FixedProductMarketMaker is ERC20, ERC1155TokenReceiver {
+contract FixedProductMarketMaker is ERC20, ERC1155Receiver {
     event FPMMFundingAdded(
         address indexed funder,
         uint[] amountsAdded,
@@ -44,7 +42,6 @@ contract FixedProductMarketMaker is ERC20, ERC1155TokenReceiver {
         uint outcomeTokensSold
     );
 
-    using SafeMath for uint;
     using CeilDiv for uint;
 
     uint constant ONE = 10**18;
@@ -60,6 +57,42 @@ contract FixedProductMarketMaker is ERC20, ERC1155TokenReceiver {
     uint[] positionIds;
     mapping (address => uint256) withdrawnFees;
     uint internal totalWithdrawnFees;
+
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        ConditionalTokens _conditionalTokens,
+        IERC20 _collateralToken,
+        bytes32[] memory _conditionIds,
+        uint _fee
+    ) ERC20(name_, symbol_) {
+        initialize(_conditionalTokens, _collateralToken, _conditionIds, _fee);
+    }
+
+    function initialize(
+        ConditionalTokens _conditionalTokens,
+        IERC20 _collateralToken,
+        bytes32[] memory _conditionIds,
+        uint _fee
+    ) public {
+        conditionalTokens = _conditionalTokens;
+        collateralToken = _collateralToken;
+        conditionIds = _conditionIds;
+        fee = _fee;
+
+        uint atomicOutcomeSlotCount = 1;
+        outcomeSlotCounts = new uint[](conditionIds.length);
+        for (uint i = 0; i < conditionIds.length; i++) {
+            uint outcomeSlotCount = conditionalTokens.getOutcomeSlotCount(conditionIds[i]);
+            atomicOutcomeSlotCount *= outcomeSlotCount;
+            outcomeSlotCounts[i] = outcomeSlotCount;
+        }
+        require(atomicOutcomeSlotCount > 1, "conditions must be valid");
+
+        collectionIds = new bytes32[][](conditionIds.length);
+        _recordCollectionIDsForAllConditions(conditionIds.length, bytes32(0));
+        require(positionIds.length == atomicOutcomeSlotCount, "position IDs construction failed!?");
+    }
 
     function getPoolBalances() private view returns (uint[] memory) {
         address[] memory thises = new address[](positionIds.length);
@@ -103,25 +136,25 @@ contract FixedProductMarketMaker is ERC20, ERC1155TokenReceiver {
     }
 
     function collectedFees() external view returns (uint) {
-        return feePoolWeight.sub(totalWithdrawnFees);
+        return feePoolWeight - totalWithdrawnFees;
     }
 
     function feesWithdrawableBy(address account) public view returns (uint) {
-        uint rawAmount = feePoolWeight.mul(balanceOf(account)) / totalSupply();
-        return rawAmount.sub(withdrawnFees[account]);
+        uint rawAmount = feePoolWeight * balanceOf(account) / totalSupply();
+        return rawAmount - withdrawnFees[account];
     }
 
     function withdrawFees(address account) public {
-        uint rawAmount = feePoolWeight.mul(balanceOf(account)) / totalSupply();
-        uint withdrawableAmount = rawAmount.sub(withdrawnFees[account]);
+        uint rawAmount = feePoolWeight * balanceOf(account) / totalSupply();
+        uint withdrawableAmount = rawAmount - withdrawnFees[account];
         if(withdrawableAmount > 0){
             withdrawnFees[account] = rawAmount;
-            totalWithdrawnFees = totalWithdrawnFees.add(withdrawableAmount);
+            totalWithdrawnFees += withdrawableAmount;
             require(collateralToken.transfer(account, withdrawableAmount), "withdrawal transfer failed");
         }
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal {
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
         if (from != address(0)) {
             withdrawFees(from);
         }
@@ -129,19 +162,19 @@ contract FixedProductMarketMaker is ERC20, ERC1155TokenReceiver {
         uint totalSupply = totalSupply();
         uint withdrawnFeesTransfer = totalSupply == 0 ?
             amount :
-            feePoolWeight.mul(amount) / totalSupply;
+            feePoolWeight * amount / totalSupply;
 
         if (from != address(0)) {
-            withdrawnFees[from] = withdrawnFees[from].sub(withdrawnFeesTransfer);
-            totalWithdrawnFees = totalWithdrawnFees.sub(withdrawnFeesTransfer);
+            withdrawnFees[from] -= withdrawnFeesTransfer;
+            totalWithdrawnFees -= withdrawnFeesTransfer;
         } else {
-            feePoolWeight = feePoolWeight.add(withdrawnFeesTransfer);
+            feePoolWeight += withdrawnFeesTransfer;
         }
         if (to != address(0)) {
-            withdrawnFees[to] = withdrawnFees[to].add(withdrawnFeesTransfer);
-            totalWithdrawnFees = totalWithdrawnFees.add(withdrawnFeesTransfer);
+            withdrawnFees[to] += withdrawnFeesTransfer;
+            totalWithdrawnFees += withdrawnFeesTransfer;
         } else {
-            feePoolWeight = feePoolWeight.sub(withdrawnFeesTransfer);
+            feePoolWeight -= withdrawnFeesTransfer;
         }
     }
 
@@ -164,11 +197,11 @@ contract FixedProductMarketMaker is ERC20, ERC1155TokenReceiver {
             }
 
             for(uint i = 0; i < poolBalances.length; i++) {
-                uint remaining = addedFunds.mul(poolBalances[i]) / poolWeight;
-                sendBackAmounts[i] = addedFunds.sub(remaining);
+                uint remaining = addedFunds * poolBalances[i] / poolWeight;
+                sendBackAmounts[i] = addedFunds - remaining;
             }
 
-            mintAmount = addedFunds.mul(poolShareSupply) / poolWeight;
+            mintAmount = addedFunds * poolShareSupply / poolWeight;
         } else {
             if(distributionHint.length > 0) {
                 require(distributionHint.length == positionIds.length, "hint length off");
@@ -180,9 +213,9 @@ contract FixedProductMarketMaker is ERC20, ERC1155TokenReceiver {
                 }
 
                 for(uint i = 0; i < distributionHint.length; i++) {
-                    uint remaining = addedFunds.mul(distributionHint[i]) / maxHint;
+                    uint remaining = addedFunds * distributionHint[i] / maxHint;
                     require(remaining > 0, "must hint a valid distribution");
-                    sendBackAmounts[i] = addedFunds.sub(remaining);
+                    sendBackAmounts[i] = addedFunds - remaining;
                 }
             }
 
@@ -199,7 +232,7 @@ contract FixedProductMarketMaker is ERC20, ERC1155TokenReceiver {
 
         // transform sendBackAmounts to array of amounts added
         for (uint i = 0; i < sendBackAmounts.length; i++) {
-            sendBackAmounts[i] = addedFunds.sub(sendBackAmounts[i]);
+            sendBackAmounts[i] = addedFunds - sendBackAmounts[i];
         }
 
         emit FPMMFundingAdded(msg.sender, sendBackAmounts, mintAmount);
@@ -214,15 +247,13 @@ contract FixedProductMarketMaker is ERC20, ERC1155TokenReceiver {
 
         uint poolShareSupply = totalSupply();
         for(uint i = 0; i < poolBalances.length; i++) {
-            sendAmounts[i] = poolBalances[i].mul(sharesToBurn) / poolShareSupply;
+            sendAmounts[i] = poolBalances[i] * sharesToBurn / poolShareSupply;
         }
 
         uint collateralRemovedFromFeePool = collateralToken.balanceOf(address(this));
 
         _burn(msg.sender, sharesToBurn);
-        collateralRemovedFromFeePool = collateralRemovedFromFeePool.sub(
-            collateralToken.balanceOf(address(this))
-        );
+        collateralRemovedFromFeePool -= collateralToken.balanceOf(address(this));
 
         conditionalTokens.safeBatchTransferFrom(address(this), msg.sender, positionIds, sendAmounts, "");
 
@@ -237,6 +268,7 @@ contract FixedProductMarketMaker is ERC20, ERC1155TokenReceiver {
         bytes calldata data
     )
         external
+        override
         returns (bytes4)
     {
         if (operator == address(this)) {
@@ -253,6 +285,7 @@ contract FixedProductMarketMaker is ERC20, ERC1155TokenReceiver {
         bytes calldata data
     )
         external
+        override
         returns (bytes4)
     {
         if (operator == address(this) && from == address(0)) {
@@ -265,40 +298,40 @@ contract FixedProductMarketMaker is ERC20, ERC1155TokenReceiver {
         require(outcomeIndex < positionIds.length, "invalid outcome index");
 
         uint[] memory poolBalances = getPoolBalances();
-        uint investmentAmountMinusFees = investmentAmount.sub(investmentAmount.mul(fee) / ONE);
+        uint investmentAmountMinusFees = investmentAmount - (investmentAmount * fee / ONE);
         uint buyTokenPoolBalance = poolBalances[outcomeIndex];
-        uint endingOutcomeBalance = buyTokenPoolBalance.mul(ONE);
+        uint endingOutcomeBalance = buyTokenPoolBalance * ONE;
         for(uint i = 0; i < poolBalances.length; i++) {
             if(i != outcomeIndex) {
                 uint poolBalance = poolBalances[i];
-                endingOutcomeBalance = endingOutcomeBalance.mul(poolBalance).ceildiv(
-                    poolBalance.add(investmentAmountMinusFees)
+                endingOutcomeBalance = endingOutcomeBalance * poolBalance.ceildiv(
+                    poolBalance + investmentAmountMinusFees
                 );
             }
         }
         require(endingOutcomeBalance > 0, "must have non-zero balances");
 
-        return buyTokenPoolBalance.add(investmentAmountMinusFees).sub(endingOutcomeBalance.ceildiv(ONE));
+        return buyTokenPoolBalance + investmentAmountMinusFees - endingOutcomeBalance.ceildiv(ONE);
     }
 
     function calcSellAmount(uint returnAmount, uint outcomeIndex) public view returns (uint outcomeTokenSellAmount) {
         require(outcomeIndex < positionIds.length, "invalid outcome index");
 
         uint[] memory poolBalances = getPoolBalances();
-        uint returnAmountPlusFees = returnAmount.mul(ONE) / ONE.sub(fee);
+        uint returnAmountPlusFees = returnAmount * ONE / (ONE - fee);
         uint sellTokenPoolBalance = poolBalances[outcomeIndex];
-        uint endingOutcomeBalance = sellTokenPoolBalance.mul(ONE);
+        uint endingOutcomeBalance = sellTokenPoolBalance * ONE;
         for(uint i = 0; i < poolBalances.length; i++) {
             if(i != outcomeIndex) {
                 uint poolBalance = poolBalances[i];
-                endingOutcomeBalance = endingOutcomeBalance.mul(poolBalance).ceildiv(
-                    poolBalance.sub(returnAmountPlusFees)
+                endingOutcomeBalance = endingOutcomeBalance * poolBalance.ceildiv(
+                    poolBalance - returnAmountPlusFees
                 );
             }
         }
         require(endingOutcomeBalance > 0, "must have non-zero balances");
 
-        return returnAmountPlusFees.add(endingOutcomeBalance.ceildiv(ONE)).sub(sellTokenPoolBalance);
+        return returnAmountPlusFees + endingOutcomeBalance.ceildiv(ONE) - sellTokenPoolBalance;
     }
 
     function buy(uint investmentAmount, uint outcomeIndex, uint minOutcomeTokensToBuy) external {
@@ -307,9 +340,9 @@ contract FixedProductMarketMaker is ERC20, ERC1155TokenReceiver {
 
         require(collateralToken.transferFrom(msg.sender, address(this), investmentAmount), "cost transfer failed");
 
-        uint feeAmount = investmentAmount.mul(fee) / ONE;
-        feePoolWeight = feePoolWeight.add(feeAmount);
-        uint investmentAmountMinusFees = investmentAmount.sub(feeAmount);
+        uint feeAmount = investmentAmount * fee / ONE;
+        feePoolWeight += feeAmount;
+        uint investmentAmountMinusFees = investmentAmount - feeAmount;
         require(collateralToken.approve(address(conditionalTokens), investmentAmountMinusFees), "approval for splits failed");
         splitPositionThroughAllConditions(investmentAmountMinusFees);
 
@@ -324,63 +357,36 @@ contract FixedProductMarketMaker is ERC20, ERC1155TokenReceiver {
 
         conditionalTokens.safeTransferFrom(msg.sender, address(this), positionIds[outcomeIndex], outcomeTokensToSell, "");
 
-        uint feeAmount = returnAmount.mul(fee) / (ONE.sub(fee));
-        feePoolWeight = feePoolWeight.add(feeAmount);
-        uint returnAmountPlusFees = returnAmount.add(feeAmount);
+        uint feeAmount = returnAmount * fee / (ONE - fee);
+        feePoolWeight += feeAmount;
+        uint returnAmountPlusFees = returnAmount + feeAmount;
         mergePositionsThroughAllConditions(returnAmountPlusFees);
 
         require(collateralToken.transfer(msg.sender, returnAmount), "return transfer failed");
 
         emit FPMMSell(msg.sender, returnAmount, feeAmount, outcomeIndex, outcomeTokensToSell);
     }
-}
 
+    function _recordCollectionIDsForAllConditions(uint conditionsLeft, bytes32 parentCollectionId) private {
+        if (conditionsLeft == 0) {
+            positionIds.push(CTHelpers.getPositionId(collateralToken, parentCollectionId));
+            return;
+        }
 
-// for proxying purposes
-contract FixedProductMarketMakerData {
-    mapping (address => uint256) internal _balances;
-    mapping (address => mapping (address => uint256)) internal _allowances;
-    uint256 internal _totalSupply;
+        conditionsLeft--;
 
+        uint outcomeSlotCount = outcomeSlotCounts[conditionsLeft];
 
-    bytes4 internal constant _INTERFACE_ID_ERC165 = 0x01ffc9a7;
-    mapping(bytes4 => bool) internal _supportedInterfaces;
-
-
-    event FPMMFundingAdded(
-        address indexed funder,
-        uint[] amountsAdded,
-        uint sharesMinted
-    );
-    event FPMMFundingRemoved(
-        address indexed funder,
-        uint[] amountsRemoved,
-        uint collateralRemovedFromFeePool,
-        uint sharesBurnt
-    );
-    event FPMMBuy(
-        address indexed buyer,
-        uint investmentAmount,
-        uint feeAmount,
-        uint indexed outcomeIndex,
-        uint outcomeTokensBought
-    );
-    event FPMMSell(
-        address indexed seller,
-        uint returnAmount,
-        uint feeAmount,
-        uint indexed outcomeIndex,
-        uint outcomeTokensSold
-    );
-    ConditionalTokens internal conditionalTokens;
-    IERC20 internal collateralToken;
-    bytes32[] internal conditionIds;
-    uint internal fee;
-    uint internal feePoolWeight;
-
-    uint[] internal outcomeSlotCounts;
-    bytes32[][] internal collectionIds;
-    uint[] internal positionIds;
-    mapping (address => uint256) internal withdrawnFees;
-    uint internal totalWithdrawnFees;
+        collectionIds[conditionsLeft].push(parentCollectionId);
+        for (uint i = 0; i < outcomeSlotCount; i++) {
+            _recordCollectionIDsForAllConditions(
+                conditionsLeft,
+                CTHelpers.getCollectionId(
+                    parentCollectionId,
+                    conditionIds[conditionsLeft],
+                    1 << i
+                )
+            );
+        }
+    }
 }
