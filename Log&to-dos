@@ -132,7 +132,7 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 [main 799084f] so Ive gone back to gnosis contr
 
 ### Day40 + 41 :
-**Today's Progress**: I ended up staying in this repo and redeploying the gnosis contracts here. Took ages and tonnes of tweaks to make the contracts work with ethersv8 and new OZ. It compiles at least now and added a solidity optimiser to fix size. Tomorrow will pick up deploy.js / test-market.js. I'm sure there will be more bugs. I'm changing more of these gnosis contracts than I would like so will pay a dev to review the changes at some point
+**Today's Progress**: I ended up staying in this repo and redeploying the gnosis contracts here. Took ages and tonnes of tweaks to make the contracts work with ethersv8 and new OZ. It compiles at least now and added a solidity optimiser to fix size. Tomorrow will pick up deploy.js / test-market.js. Im sure there will be more bugs. Im changing more of these gnosis contracts than I would like so will pay a dev to review the changes at some point
 
 TO DO IDEAS:
 Essentials for Later Development
