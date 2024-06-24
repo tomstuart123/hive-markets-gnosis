@@ -133,6 +133,8 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 
 ### Day40 + 41 :
 **Today's Progress**: I ended up staying in this repo and redeploying the gnosis contracts here. Took ages and tonnes of tweaks to make the contracts work with ethersv8 and new OZ. It compiles at least now and added a solidity optimiser to fix size. Tomorrow will pick up deploy.js / test-market.js. Im sure there will be more bugs. Im changing more of these gnosis contracts than I would like so will pay a dev to review the changes at some point
+### Day42:
+**Today's Progress**: I had to reformat some of the contracts. GPT led me down a path of deploying the predictionmarket myself but actually that is what the factory is for (duh). Got that compiling and then finally deploying. Now to make sure all the functionality is there in deployment
 
 TO DO IDEAS:
 Essentials for Later Development

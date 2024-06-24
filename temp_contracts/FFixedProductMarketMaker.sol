@@ -58,8 +58,16 @@ contract FixedProductMarketMaker is ERC20, ERC1155Receiver {
     mapping (address => uint256) withdrawnFees;
     uint internal totalWithdrawnFees;
 
-    constructor() ERC20("FixedProductMarketMaker", "FPMM") {}
-
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        ConditionalTokens _conditionalTokens,
+        IERC20 _collateralToken,
+        bytes32[] memory _conditionIds,
+        uint _fee
+    ) ERC20(name_, symbol_) {
+        initialize(_conditionalTokens, _collateralToken, _conditionIds, _fee);
+    }
 
     function initialize(
         ConditionalTokens _conditionalTokens,
@@ -67,7 +75,6 @@ contract FixedProductMarketMaker is ERC20, ERC1155Receiver {
         bytes32[] memory _conditionIds,
         uint _fee
     ) public {
-        require(address(conditionalTokens) == address(0) && address(collateralToken) == address(0), "Already initialized");
         conditionalTokens = _conditionalTokens;
         collateralToken = _collateralToken;
         conditionIds = _conditionIds;
