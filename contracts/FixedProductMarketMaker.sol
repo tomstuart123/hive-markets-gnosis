@@ -179,33 +179,38 @@ contract FixedProductMarketMaker is ERC20, ERC1155Receiver {
         uint[] memory sendBackAmounts = new uint[](positionIds.length);
         uint poolShareSupply = totalSupply();
         uint mintAmount;
-        if(poolShareSupply > 0) {
+
+        if (poolShareSupply > 0) {
             require(distributionHint.length == 0, "cannot use distribution hint after initial funding");
             uint[] memory poolBalances = getPoolBalances();
             uint poolWeight = 0;
-            for(uint i = 0; i < poolBalances.length; i++) {
+            for (uint i = 0; i < poolBalances.length; i++) {
                 uint balance = poolBalances[i];
-                if(poolWeight < balance)
+                if (poolWeight < balance)
                     poolWeight = balance;
             }
 
-            for(uint i = 0; i < poolBalances.length; i++) {
+            require(poolWeight > 0, "poolWeight must be greater than zero");
+
+            for (uint i = 0; i < poolBalances.length; i++) {
                 uint remaining = addedFunds * poolBalances[i] / poolWeight;
                 sendBackAmounts[i] = addedFunds - remaining;
             }
 
             mintAmount = addedFunds * poolShareSupply / poolWeight;
         } else {
-            if(distributionHint.length > 0) {
+            if (distributionHint.length > 0) {
                 require(distributionHint.length == positionIds.length, "hint length off");
                 uint maxHint = 0;
-                for(uint i = 0; i < distributionHint.length; i++) {
+                for (uint i = 0; i < distributionHint.length; i++) {
                     uint hint = distributionHint[i];
-                    if(maxHint < hint)
+                    if (maxHint < hint)
                         maxHint = hint;
                 }
 
-                for(uint i = 0; i < distributionHint.length; i++) {
+                require(maxHint > 0, "maxHint must be greater than zero");
+
+                for (uint i = 0; i < distributionHint.length; i++) {
                     uint remaining = addedFunds * distributionHint[i] / maxHint;
                     require(remaining > 0, "must hint a valid distribution");
                     sendBackAmounts[i] = addedFunds - remaining;
