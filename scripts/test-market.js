@@ -23,8 +23,8 @@ const runTests = async () => {
   try {
     const description = "Test market description " + Date.now(); // Append timestamp for uniqueness
     const outcomeSlotCount = 2; // Example outcome slot count
-    const collateralAmount = ethers.parseUnits("1", 18); // Example collateral amount
-    const approvedAmount = ethers.parseUnits("10", 18); // Example collateral amount
+    let collateralAmount = ethers.parseUnits("1", 18); // Example collateral amount
+    let approvedAmount = ethers.parseUnits("10", 18); // Example collateral amount
 
 
     // Log initial balance
@@ -86,7 +86,7 @@ const runTests = async () => {
     await approveTx2.wait();
     console.log("Collateral tokens approved for FixedProductMarketMaker:", approvedAmount);
     console.log("cost of liquidity", collateralAmount);
-
+    console.log('type', typeof collateralAmount);
 
      // Add liquidity
     const addLiquidityTx = await fixedProductMarketMaker.addFunding(collateralAmount, []);

@@ -170,50 +170,63 @@ contract FixedProductMarketMaker is ERC20, ERC1155Receiver {
             feePoolWeight -= withdrawnFeesTransfer;
         }
     }
+    event DebugUint(string message, uint256 value);
 
-    function addFunding(uint addedFunds, uint[] calldata distributionHint)
-        external
-    {
+    function addFunding(uint256 addedFunds, uint256[] calldata distributionHint) external {
         require(addedFunds > 0, "funding must be non-zero");
 
-        uint[] memory sendBackAmounts = new uint[](positionIds.length);
-        uint poolShareSupply = totalSupply();
-        uint mintAmount;
+        uint256[] memory sendBackAmounts = new uint256[](positionIds.length);
+        uint256 poolShareSupply = totalSupply();
+        uint256 mintAmount;
 
         if (poolShareSupply > 0) {
             require(distributionHint.length == 0, "cannot use distribution hint after initial funding");
-            uint[] memory poolBalances = getPoolBalances();
-            uint poolWeight = 0;
-            for (uint i = 0; i < poolBalances.length; i++) {
-                uint balance = poolBalances[i];
+            uint256[] memory poolBalances = getPoolBalances();
+            uint256 poolWeight = 0;
+            for (uint256 i = 0; i < poolBalances.length; i++) {
+                uint256 balance = poolBalances[i];
                 if (poolWeight < balance)
                     poolWeight = balance;
             }
 
             require(poolWeight > 0, "poolWeight must be greater than zero");
 
-            for (uint i = 0; i < poolBalances.length; i++) {
-                uint remaining = addedFunds * poolBalances[i] / poolWeight;
+            for (uint256 i = 0; i < poolBalances.length; i++) {
+                uint256 product = addedFunds * poolBalances[i];
+                require(product / addedFunds == poolBalances[i], "Multiplication overflow detected");
+                emit DebugUint("Product before division", product);
+                uint256 remaining = product / poolWeight;
+                emit DebugUint("Remaining after division", remaining);
                 sendBackAmounts[i] = addedFunds - remaining;
+                emit DebugUint("sendBackAmounts[i]", sendBackAmounts[i]);
             }
 
-            mintAmount = addedFunds * poolShareSupply / poolWeight;
+            uint256 product = addedFunds * poolShareSupply;
+            require(product / addedFunds == poolShareSupply, "Multiplication overflow detected");
+            emit DebugUint("Product before division for mintAmount", product);
+            mintAmount = product / poolWeight;
+            emit DebugUint("mintAmount after division", mintAmount);
         } else {
             if (distributionHint.length > 0) {
                 require(distributionHint.length == positionIds.length, "hint length off");
-                uint maxHint = 0;
-                for (uint i = 0; i < distributionHint.length; i++) {
-                    uint hint = distributionHint[i];
+                uint256 maxHint = 0;
+                for (uint256 i = 0; i < distributionHint.length; i++) {
+                    uint256 hint = distributionHint[i];
                     if (maxHint < hint)
                         maxHint = hint;
                 }
 
                 require(maxHint > 0, "maxHint must be greater than zero");
 
-                for (uint i = 0; i < distributionHint.length; i++) {
-                    uint remaining = addedFunds * distributionHint[i] / maxHint;
+                for (uint256 i = 0; i < distributionHint.length; i++) {
+                    uint256 product = addedFunds * distributionHint[i];
+                    require(product / addedFunds == distributionHint[i], "Multiplication overflow detected");
+                    emit DebugUint("Product before division for remaining", product);
+                    uint256 remaining = product / maxHint;
+                    emit DebugUint("Remaining after division", remaining);
                     require(remaining > 0, "must hint a valid distribution");
                     sendBackAmounts[i] = addedFunds - remaining;
+                    emit DebugUint("sendBackAmounts[i]", sendBackAmounts[i]);
                 }
             }
 
@@ -229,12 +242,13 @@ contract FixedProductMarketMaker is ERC20, ERC1155Receiver {
         conditionalTokens.safeBatchTransferFrom(address(this), msg.sender, positionIds, sendBackAmounts, "");
 
         // transform sendBackAmounts to array of amounts added
-        for (uint i = 0; i < sendBackAmounts.length; i++) {
+        for (uint256 i = 0; i < sendBackAmounts.length; i++) {
             sendBackAmounts[i] = addedFunds - sendBackAmounts[i];
         }
 
         emit FPMMFundingAdded(msg.sender, sendBackAmounts, mintAmount);
     }
+
 
     function removeFunding(uint sharesToBurn)
         external

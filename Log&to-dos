@@ -137,6 +137,8 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 **Today's Progress**: I had to reformat some of the contracts. GPT led me down a path of deploying the predictionmarket myself but actually that is what the factory is for (duh). Got that compiling and then finally deploying. Now to make sure all the functionality is there in deployment
 ### Day43:
 **Today's Progress**: got the factory to deploy the market maker. However stuck on a panic overflow in the addFunding function. Will come back to it
+### Day44:
+**Today's Progress**: Im getting completely destroyed by the panic overflow error. Cant get any events or errors to come from the contract. My gut is the contract isnt being setup correctly by the factory. I think Im going to have to go back to removing the factory and initialising / constructing it myself... grr
 
 
 TO DO IDEAS:
