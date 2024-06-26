@@ -23,9 +23,10 @@ const runTests = async () => {
   try {
     const description = "Test market description " + Date.now(); // Append timestamp for uniqueness
     const outcomeSlotCount = 2; // Example outcome slot count
-    let collateralAmount = ethers.parseUnits("1", 18); // Example collateral amount
-    let approvedAmount = ethers.parseUnits("10", 18); // Example collateral amount
-
+    let collateralAmount = ethers.parseUnits("2", 18); // Example collateral amount
+    let buyErcAmount = ethers.parseUnits("0.1", 18); // Example trade amount
+    let sellErcAmount = ethers.parseUnits("0.1", 18); // Example trade amount
+    let approvedAmount = ethers.parseUnits("100", 18); // Example approved amount
 
     // Log initial balance
     const initialBalance = await collateralToken.balanceOf(wallet.address);
@@ -81,32 +82,53 @@ const runTests = async () => {
 
     // create contract instance at this event
     const fixedProductMarketMaker = new ethers.Contract(fixedProductMarketMakerAddress, FixedProductMarketMakerArtifact.abi, wallet);
-    // Ensure sufficient allowance for FixedProductMarketMaker to spend tokens
+    
     const approveTx2 = await collateralToken.approve(fixedProductMarketMakerAddress, approvedAmount);
     await approveTx2.wait();
     console.log("Collateral tokens approved for FixedProductMarketMaker:", approvedAmount);
     console.log("cost of liquidity", collateralAmount);
     console.log('type', typeof collateralAmount);
 
-     // Add liquidity
+    //  // Add liquidity
     const addLiquidityTx = await fixedProductMarketMaker.addFunding(collateralAmount, []);
     await addLiquidityTx.wait();
     console.log("Liquidity added:", addLiquidityTx.hash);
 
     // Buy outcome shares
     const outcomeIndex = 0; // Buying shares for 'Outcome 1'
-    const buyOutcomeTx = await fixedProductMarketMaker.buy(collateralAmount, outcomeIndex, {
-      gasLimit: 5000000
-    });
-    await buyOutcomeTx.wait();
-    console.log("Outcome shares bought:", buyOutcomeTx.hash);
+    for (let i = 0; i <22; i++) { // Adjust the loop count as needed
+      const buyOutcomeTx = await fixedProductMarketMaker.buy(buyErcAmount, outcomeIndex, 1);
+      await buyOutcomeTx.wait();
+      console.log(`Outcome shares bought ${i + 1}:`, buyOutcomeTx.hash);
+    }
+
+    // Approve the FixedProductMarketMaker to manage the ERC1155 tokens
+    const approveERC1155Tx = await conditionalTokens.setApprovalForAll(fixedProductMarketMakerAddress, true);
+    await approveERC1155Tx.wait();
+    console.log("ERC1155 tokens approved for FixedProductMarketMaker");
+
+    const isApproved = await conditionalTokens.isApprovedForAll(wallet.address, fixedProductMarketMakerAddress);
+    console.log("Is user approved for market contract:", isApproved);
+
+    // Check balance and prep before selling
+    const positionId = await fixedProductMarketMaker.positionIds(outcomeIndex);
+    const balance = await conditionalTokens.balanceOf(wallet.address, positionId);
+    const maxOutcomeTokensToSell = await fixedProductMarketMaker.calcSellAmount(sellErcAmount, outcomeIndex);
+    console.log("Balance of outcome tokens before selling:", ethers.formatUnits(balance, 18));
+    console.log('Max1155ToSell',ethers.formatUnits(maxOutcomeTokensToSell, 18))
+    console.log('buyAmount', ethers.formatUnits(buyErcAmount, 18))
+    console.log('sellAmount', ethers.formatUnits(sellErcAmount, 18))
 
     // Sell outcome shares
-    const sellOutcomeTx = await fixedProductMarketMaker.sell(collateralAmount, outcomeIndex, {
-      gasLimit: 5000000
-    });
+    const sellOutcomeTx = await fixedProductMarketMaker.sell(sellErcAmount, outcomeIndex, maxOutcomeTokensToSell);
     await sellOutcomeTx.wait();
     console.log("Outcome shares sold:", sellOutcomeTx.hash);
+
+    // Oracle Resolve the condition
+    const payoutNumerators = [1, 0]; // Example payout numerators, adjust as needed
+    const reportPayoutsTx = await conditionalTokens.reportPayouts(questionId, payoutNumerators);
+    await reportPayoutsTx.wait();
+    console.log("Condition resolved:", reportPayoutsTx.hash);
 
     // Remove liquidity
     const removeLiquidityTx = await fixedProductMarketMaker.removeFunding(collateralAmount, {

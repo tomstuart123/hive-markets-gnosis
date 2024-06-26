@@ -209,7 +209,7 @@ contract ConditionalTokens is ERC1155 {
         uint outcomeSlotCount = payoutNumerators[conditionId].length;
         require(outcomeSlotCount > 0, "condition not prepared yet");
 
-        uint totalPayout = 0;
+        uint totalPayout = 0; 
 
         uint fullIndexSet = (1 << outcomeSlotCount) - 1;
         for (uint i = 0; i < indexSets.length; i++) {

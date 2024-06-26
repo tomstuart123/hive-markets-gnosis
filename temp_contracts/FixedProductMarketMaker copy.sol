@@ -54,7 +54,7 @@ contract FixedProductMarketMaker is ERC20, ERC1155Receiver {
 
     uint[] outcomeSlotCounts;
     bytes32[][] collectionIds;
-    uint[] public positionIds;
+    uint[] positionIds;
     mapping (address => uint256) withdrawnFees;
     uint internal totalWithdrawnFees;
 
@@ -109,10 +109,10 @@ contract FixedProductMarketMaker is ERC20, ERC1155Receiver {
     function splitPositionThroughAllConditions(uint amount)
         private
     {
-        for(int i = int(conditionIds.length) - 1; i >= 0; i--) {
-            uint[] memory partition = generateBasicPartition(outcomeSlotCounts[uint(i)]);
-            for(uint j = 0; j < collectionIds[uint(i)].length; j++) {
-                conditionalTokens.splitPosition(collateralToken, collectionIds[uint(i)][j], conditionIds[uint(i)], partition, amount);
+        for(uint i = conditionIds.length - 1; int(i) >= 0; i--) {
+            uint[] memory partition = generateBasicPartition(outcomeSlotCounts[i]);
+            for(uint j = 0; j < collectionIds[i].length; j++) {
+                conditionalTokens.splitPosition(collateralToken, collectionIds[i][j], conditionIds[i], partition, amount);
             }
         }
     }
