@@ -87,7 +87,7 @@ contract FixedProductMarketMaker is ERC20, ERC1155Receiver {
         require(positionIds.length == atomicOutcomeSlotCount, "position IDs construction failed!?");
     }
 
-    function getPoolBalances() private view returns (uint[] memory) {
+    function getPoolBalances() public view returns (uint[] memory) {
         address[] memory thises = new address[](positionIds.length);
         for(uint i = 0; i < positionIds.length; i++) {
             thises[i] = address(this);
