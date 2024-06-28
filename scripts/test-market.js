@@ -39,8 +39,8 @@ const runTests = async () => {
 
     // Set variables
     const oracle = wallet.address;
-    // const fee = ethers.parseUnits("0.0001", 18);
-    const fee = 0;
+    const fee = ethers.parseUnits("0.0001", 18);
+    // const fee = 0;
     const outcomeIndex = 0;
 
     // Prepare condition
@@ -174,9 +174,9 @@ const runTests = async () => {
     const withdrawableFees = await fixedProductMarketMaker.feesWithdrawableBy(wallet.address);
     console.log("Withdrawable Fees for user:", ethers.formatUnits(withdrawableFees, 18));
 
-    // Withdraw fees for the user
-    const withdrawFeesTx = await fixedProductMarketMaker.withdrawFees(wallet.address);
-    console.log("Withdraw Tx:", withdrawFeesTx.hash);
+    // // Withdraw fees for the user
+    // const withdrawFeesTx = await fixedProductMarketMaker.withdrawFees(wallet.address);
+    // console.log("Withdraw Tx:", withdrawFeesTx.hash);
 
 
     // Oracle (centralised) Resolve the condition

@@ -4,16 +4,13 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { ethers } from "ethers";
 import dotenv from "dotenv";
-import VotePowerArtifact from './artifacts/contracts/votepower.sol/VotePower.json'; // Import the JSON file
-import ConditionalTokensWrapperArtifact from './artifacts/contracts/ConditionalTokensWrapper.sol/ConditionalTokensWrapper.json';
-import MarketMakerArtifact from './artifacts/contracts/MarketMaker.sol/MarketMaker.json'; // Import MarketMaker artifact
 import mongoose from 'mongoose';
 import Submission from './models/Submission'; // Import the Submission model
 import UserVote from './models/UserVote'; // IMPORT THE USERVOTE MODEL
 import { keccak256, toUtf8Bytes, id as ethersId } from 'ethers';
 import { NonceManager, Signer } from 'ethers';
 import LiveMarket from './models/LiveMarket'; // Import the LiveMarket model;
-
+ 
 
 
 dotenv.config(); // Ensure this is called to load .env variables
@@ -44,6 +41,7 @@ interface LiveMarket extends Submission {
     yes: number;
     no: number;
   };
+  marketAddress: string; // Add this line
 }
 
 // let submissions: Submission[] = [];
@@ -55,8 +53,28 @@ let liveMarket: LiveMarket | null = null;
 // Ethers.js setup
 const provider = new ethers.JsonRpcProvider(`https://base-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`);
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
-const ERC20Artifact = require('./artifacts/contracts/IERC20.sol/IERC20.json');
 const managedSigner = new NonceManager(wallet);  // Wrap the wallet with NonceManager
+
+// get contract abis
+const ERC20Artifact = require('./artifacts/contracts/IERC20.sol/IERC20.json');
+const ConditionalTokensArtifact = require('./artifacts/contracts/ConditionalTokens.sol/ConditionalTokens.json');
+const FixedProductMarketMakerFactoryArtifact = require('./artifacts/contracts/FixedProductMarketMakerFactory.sol/FixedProductMarketMakerFactory.json');
+const VotePowerArtifact = require('./artifacts/contracts/votepower.sol/VotePower.json'); // Import the JSON file
+const FixedProductMarketMakerArtifact = require('./artifacts/contracts/FixedProductMarketMaker.sol/FixedProductMarketMaker.json');
+
+
+// get contract abis
+const collateralToken = new ethers.Contract(process.env.TOKEN_CONTRACT_ADDRESS!, ERC20Artifact.abi, managedSigner);
+const factory = new ethers.Contract(
+  process.env.FIXED_PRODUCT_MARKET_MAKER_FACTORY_ADDRESS!,
+  FixedProductMarketMakerFactoryArtifact.abi,
+  managedSigner
+);
+const conditionalTokens = new ethers.Contract(
+  process.env.CONDITIONAL_TOKENS_CONTRACT_ADDRESS!,
+  ConditionalTokensArtifact.abi,
+  managedSigner
+);
 
 
 const votePowerContract = new ethers.Contract(
@@ -65,26 +83,18 @@ const votePowerContract = new ethers.Contract(
   managedSigner
 );
 
+// Initialize live market from the database
+const initializeLiveMarket = async () => {
+  try {
+    const savedLiveMarket = await LiveMarket.findOne();
+    if (savedLiveMarket) {
+      liveMarket = savedLiveMarket.toObject();
+    }
+  } catch (error) {
+    console.error('Error initializing live market:', error);
+  }
+};
 
-// const collateralToken = new ethers.Contract(process.env.TOKEN_CONTRACT_ADDRESS!, CollateralTokenArtifact.abi, wallet);
-const collateralToken = new ethers.Contract(
-  process.env.TOKEN_CONTRACT_ADDRESS!, 
-  ERC20Artifact.abi, 
-  managedSigner
-);
-
-
-const conditionalTokensWrapperContract = new ethers.Contract(
-  process.env.CONDITIONAL_TOKENS_WRAPPER_CONTRACT_ADDRESS!,
-  ConditionalTokensWrapperArtifact.abi,
-  managedSigner
-);
-
-const marketMakerContract = new ethers.Contract(
-  process.env.MARKET_MAKER_CONTRACT_ADDRESS!,
-  MarketMakerArtifact.abi,
-  managedSigner
-);
 
 // Simulated function to determine the contest period
 const isSubmissionPeriod = (): boolean => {
@@ -123,20 +133,6 @@ const resetVotes = async () => {
   }
 };
 
-// Initialize live market from the database
-const initializeLiveMarket = async () => {
-  try {
-    const savedLiveMarket = await LiveMarket.findOne();
-    if (savedLiveMarket) {
-      liveMarket = savedLiveMarket.toObject();
-    }
-  } catch (error) {
-    console.error('Error initializing live market:', error);
-  }
-};
-
-// Call this function when the server starts
-initializeLiveMarket();
 
 app.get('/api/submissions', async (req: Request, res: Response) => {
   if (!isSubmissionPeriod()) {
@@ -236,15 +232,12 @@ app.get('/api/winner', async (req: Request, res: Response) => {
 });
 
 app.post('/api/set-live-market', async (req: Request, res: Response) => {
-  // if (isSubmissionPeriod()) {
-  //   return res.status(403).json({ message: 'Cannot set live market during submission period' });
-  // }
   try {
-    const submissions = await Submission.find(); // FETCH SUBMISSIONS FROM MONGODB
+    const submissions = await Submission.find(); // Fetch submissions from MongoDB
     if (submissions.length === 0) {
       return res.status(404).json({ message: "No submissions available to set as a live market." });
     }
-    
+
     const winningSubmission = submissions.reduce((prev, current) => (prev.votes > current.votes ? prev : current));
     liveMarket = {
       ...winningSubmission.toObject(),
@@ -259,85 +252,58 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
     await savedLiveMarket.save();
 
     // Get the questionId from the submission ID
-    let questionId;
-    try {
-      const uniqueString = `${(winningSubmission._id as string).toString()}-${Date.now()}`;
-      questionId = ethers.keccak256(ethers.toUtf8Bytes(uniqueString));
-      console.log(`Generated questionId: ${questionId}`);
-    } catch (error) {
-      console.error('Error generating questionId:', error);
-      return res.status(500).json({ message: 'Error generating questionId', error });
-    }
-
-    // Set endTime to 9 days in the future for now. UPDATE THIS LATER
-    const currentTime = new Date();
-    const futureTime = new Date(currentTime);
-    futureTime.setDate(currentTime.getDate() + 9);
-    const endTimeTimestamp = Math.floor(futureTime.getTime() / 1000); // Convert endTime to a Unix timestamp
-    console.log(`EndTime Timestamp: ${endTimeTimestamp}`);    
-    
+    const uniqueString = `${(winningSubmission._id as string).toString()}-${Date.now()}`;
+    const questionId = ethers.keccak256(ethers.toUtf8Bytes(uniqueString));
     const oracle = wallet.address;
     const outcomeSlotCount = 2; // For yes/no market
-    console.log(`Oracle address: ${oracle}, Outcome slot count: ${outcomeSlotCount}`);
-    console.log(`ID=${questionId},Oracle=${oracle},Counter=${outcomeSlotCount},`)
-
-    let nonce = await provider.getTransactionCount(wallet.address);
-    console.log("Current nonce:", nonce);
 
     try {
-      const prepareConditionTx = await conditionalTokensWrapperContract.prepareCondition(oracle, questionId, outcomeSlotCount, {
+      const prepareConditionTx = await conditionalTokens.prepareCondition(oracle, questionId, outcomeSlotCount, {
         gasLimit: 500000 // Adjust this value as needed
-      });      
+      });
       await prepareConditionTx.wait();
-      console.log("Condition prepared:", prepareConditionTx.hash);
     } catch (error) {
-      console.error('Error preparing condition:', error);
       return res.status(500).json({ message: 'Error preparing condition', error });
     }
 
-    console.log("Current nonce:", nonce);
+    const fee = ethers.parseUnits("0.0001", 18);
+    const createMarketTx = await factory.createFixedProductMarketMaker(
+      conditionalTokens.address,
+      collateralToken.address,
+      [questionId],
+      fee
+    );
+    const createMarketReceipt = await createMarketTx.wait();
 
-    const amountToApprove = ethers.parseEther("1");
-    console.log("Amount to approve (in wei):", amountToApprove.toString());
-    
-    const currentAllowance = await collateralToken.allowance(wallet.address, marketMakerContract.target);
-    console.log("Current allowance:", currentAllowance.toString());
-    
-    try {
-      console.log("Attempting to approve collateral tokens...");
-      const approveTx = await collateralToken.approve(marketMakerContract.target, amountToApprove, {
-        // nonce: nonce++ // Use the current nonce and increment
-      });
-      await approveTx.wait();
-      console.log("Collateral tokens approved for creating market:", approveTx.hash);
-    } catch (error) {
-      console.error('Error approving collateral tokens:', error);
-      return res.status(500).json({ message: 'Error approving collateral tokens', error });
+    const iface = new ethers.Interface(FixedProductMarketMakerFactoryArtifact.abi);
+    const parsedLogs = createMarketReceipt.logs
+      .map(log => {
+        try {
+          return iface.parseLog(log);
+        } catch (e) {
+          return null;
+        }
+      })
+      .filter(log => log && log.name === 'FixedProductMarketMakerCreation');
+
+    if (parsedLogs.length === 0) {
+      return res.status(500).json({ message: 'FixedProductMarketMakerCreation event not found' });
     }
+    const fixedProductMarketMakerAddress = parsedLogs[0].args.fixedProductMarketMaker;
     
+    // Store the market address
+    liveMarket.marketAddress = fixedProductMarketMakerAddress;
+    await savedLiveMarket.save();
 
-    console.log("Current nonce:", nonce);
+    await Submission.deleteMany(); // Clear submissions for next cycle
+    await resetVotes(); // Reset votes in database
 
-    
-    try {
-      console.log("Creating market in MarketMaker contract...");
-      console.log(liveMarket.title, liveMarket.question, liveMarket.source, endTimeTimestamp);
-      const createMarketTx = await marketMakerContract.createMarket(liveMarket.title, liveMarket.question, liveMarket.source, endTimeTimestamp, ethers.parseEther("1"), 0);
-      await createMarketTx.wait();
-      console.log("Market created in MarketMaker contract:", createMarketTx.hash);
-    } catch (error) {
-      console.error('Error creating market in MarketMaker contract:', error);
-      return res.status(500).json({ message: 'Error creating market in MarketMaker contract', error });
-    }
-    
-    await Submission.deleteMany(); // CLEAR SUBMISSIONS FOR NEXT CYCLE
-    await resetVotes(); // RESET VOTES IN DATABASE
     res.status(201).json(liveMarket);
   } catch (err) {
-    console.error('Unexpected error:', err);
     res.status(500).json({ message: 'Error setting live market', error: err });
   }
 });
+
 
 
 // Endpoint to get the current live market
@@ -356,14 +322,18 @@ app.get('/api/live-market', async (req: Request, res: Response) => {
 });
 
 app.post('/api/add-liquidity', async (req: Request, res: Response) => {
-  const { marketId, amount } = req.body;
+  const { amount } = req.body;
+  if (!liveMarket || !liveMarket.marketAddress) {
+    return res.status(400).json({ message: 'No live market available' });
+  }
   try {
     const amountParsed = ethers.parseUnits(amount, 18);
-    const approveTx = await collateralToken.approve(marketMakerContract.target, amountParsed);
+    const approveTx = await collateralToken.approve(liveMarket.marketAddress, amountParsed);
     await approveTx.wait();
     console.log("Collateral tokens approved for adding liquidity:", approveTx.hash);
 
-    const addLiquidityTx = await marketMakerContract.addLiquidity(marketId, amountParsed);
+    const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
+    const addLiquidityTx = await fixedProductMarketMaker.addFunding(amountParsed, []);
     await addLiquidityTx.wait();
     console.log("Liquidity added:", addLiquidityTx.hash);
 
@@ -374,11 +344,18 @@ app.post('/api/add-liquidity', async (req: Request, res: Response) => {
   }
 });
 
+
+
+
 app.post('/api/remove-liquidity', async (req: Request, res: Response) => {
-  const { marketId, amount } = req.body;
+  const { amount } = req.body;
+  if (!liveMarket || !liveMarket.marketAddress) {
+    return res.status(400).json({ message: 'No live market available' });
+  }
   try {
     const amountParsed = ethers.parseUnits(amount, 18);
-    const removeLiquidityTx = await marketMakerContract.removeLiquidity(marketId, amountParsed);
+    const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
+    const removeLiquidityTx = await fixedProductMarketMaker.removeFunding(amountParsed);
     await removeLiquidityTx.wait();
     console.log("Liquidity removed:", removeLiquidityTx.hash);
 
@@ -389,14 +366,20 @@ app.post('/api/remove-liquidity', async (req: Request, res: Response) => {
   }
 });
 
+
 app.post('/api/buy-outcome', async (req: Request, res: Response) => {
-  const { marketId, outcomeIndex, amount } = req.body;
+  const { outcomeIndex, amount, minOutcomeTokensToBuy } = req.body;
+  if (!liveMarket || !liveMarket.marketAddress) {
+    return res.status(400).json({ message: 'No live market available' });
+  }
   try {
     const amountParsed = ethers.parseUnits(amount, 18);
-    const approveTx = await collateralToken.approve(marketMakerContract.target, amountParsed);
+    const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
+    const approveTx = await collateralToken.approve(liveMarket.marketAddress, amountParsed);
     await approveTx.wait();
-    console.log("Collateral tokens approved for adding liquidity:", approveTx.hash);
-    const buyOutcomeTx = await marketMakerContract.buyOutcome(marketId, outcomeIndex, amountParsed);
+    console.log("Collateral tokens approved for buying outcome:", approveTx.hash);
+
+    const buyOutcomeTx = await fixedProductMarketMaker.buy(amountParsed, outcomeIndex, minOutcomeTokensToBuy);
     await buyOutcomeTx.wait();
     console.log("Outcome shares bought:", buyOutcomeTx.hash);
 
@@ -407,11 +390,16 @@ app.post('/api/buy-outcome', async (req: Request, res: Response) => {
   }
 });
 
+
 app.post('/api/sell-outcome', async (req: Request, res: Response) => {
-  const { marketId, outcomeIndex, amount } = req.body;
+  const { outcomeIndex, amount, maxOutcomeTokensToSell } = req.body;
+  if (!liveMarket || !liveMarket.marketAddress) {
+    return res.status(400).json({ message: 'No live market available' });
+  }
   try {
     const amountParsed = ethers.parseUnits(amount, 18);
-    const sellOutcomeTx = await marketMakerContract.sellOutcome(marketId, outcomeIndex, amountParsed);
+    const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
+    const sellOutcomeTx = await fixedProductMarketMaker.sell(amountParsed, outcomeIndex, maxOutcomeTokensToSell);
     await sellOutcomeTx.wait();
     console.log("Outcome shares sold:", sellOutcomeTx.hash);
 
@@ -421,6 +409,7 @@ app.post('/api/sell-outcome', async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error selling outcome shares', error });
   }
 });
+
 
 
 

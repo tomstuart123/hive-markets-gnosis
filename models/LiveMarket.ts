@@ -1,5 +1,3 @@
-// models/LiveMarket.js
-
 import mongoose from 'mongoose';
 
 const LiveMarketSchema = new mongoose.Schema({
@@ -11,7 +9,8 @@ const LiveMarketSchema = new mongoose.Schema({
   trading: {
     yes: { type: Number, required: true },
     no: { type: Number, required: true }
-  }
+  },
+  marketAddress: { type: String, required: true } // Add this line
 });
 
 const LiveMarket = mongoose.model('LiveMarket', LiveMarketSchema);

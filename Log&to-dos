@@ -143,7 +143,8 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 **Today's Progress**: Finally got the testmarket script runing. The panic overflow was due to a for loop using i instead of int() in splitPositionThroughAllConditions. Then got major stuck on the sell function. The outcometokens balance required to sell an amount was way higher than thought. A for loop eventually solved it but I still need to understand it better and how maxSellOutcomeTokens works. Either way, it runs end to end. Next step is to check my app functionality against these calls and make sure all functionality is included
 ### Day46:
 **Today's Progress**: I spent today really understanding the solution I found yesterady, cleaning it up and adding final functionalities to our script. First I added console.logs to understand every token movement when buy, addFunding and their opposites are run. I then added a script to work out the price of the outcome tokens (i.e. their probabililties). To do this I had to make getPoolbalances public in the contract which I didnt like. I still wonder how Gnosis gets prices out. Finally then I added a fee to the script to see what would happen. This also meant using any last untouched functions in the contract to check totalfees, fees I can claim, and withdraw fees. These all ran nicely, however the contract after the withdrawFee function did hit nonce and gas issues. Annoying but Ill come back to it
-
+### Day47:
+**Today's Progress**: Added some starter code to refactor my server.ts in order to work with my newly deployed base gnosis contracts. Lots of iterations and testing to go, but a good start
 
 
 TO DO IDEAS:
