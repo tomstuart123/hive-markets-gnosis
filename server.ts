@@ -56,7 +56,7 @@ const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
 const managedSigner = new NonceManager(wallet);  // Wrap the wallet with NonceManager
 
 // get contract abis
-const ERC20Artifact = require('./artifacts/contracts/IERC20.sol/IERC20.json');
+const ERC20Artifact = require('./artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.json');
 const ConditionalTokensArtifact = require('./artifacts/contracts/ConditionalTokens.sol/ConditionalTokens.json');
 const FixedProductMarketMakerFactoryArtifact = require('./artifacts/contracts/FixedProductMarketMakerFactory.sol/FixedProductMarketMakerFactory.json');
 const VotePowerArtifact = require('./artifacts/contracts/votepower.sol/VotePower.json'); // Import the JSON file
@@ -244,12 +244,9 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
       trading: {
         yes: 0.5, // Example initial trading value
         no: 0.5  // Example initial trading value
-      }
+      },
+      marketAddress: '' // Initialize the marketAddress field, we will update it later
     };
-
-    await LiveMarket.deleteMany(); // Clear any existing live markets
-    const savedLiveMarket = new LiveMarket(liveMarket);
-    await savedLiveMarket.save();
 
     // Get the questionId from the submission ID
     const uniqueString = `${(winningSubmission._id as string).toString()}-${Date.now()}`;
@@ -266,43 +263,59 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
       return res.status(500).json({ message: 'Error preparing condition', error });
     }
 
-    const fee = ethers.parseUnits("0.0001", 18);
+     // Verify the condition was prepared successfully
+     const conditionId = await conditionalTokens.getConditionId(oracle, questionId, outcomeSlotCount);
+     const outcomeSlotCountFromCondition = Number(await conditionalTokens.getOutcomeSlotCount(conditionId));
+     console.log('Condition ID:', conditionId);
+     console.log('Outcome Slot Count:', outcomeSlotCountFromCondition);
+     console.log('other outcomeslot', outcomeSlotCount)
+    // Debug log addresses
+    console.log('Conditional Tokens Address:', conditionalTokens.target);
+    console.log('Collateral Token Address:', collateralToken.target);
+
+    // const fee = ethers.parseUnits("0.0001", 18);
+    const fee = 0;
     const createMarketTx = await factory.createFixedProductMarketMaker(
-      conditionalTokens.address,
-      collateralToken.address,
-      [questionId],
+      conditionalTokens.target,
+      collateralToken.target,
+      [conditionId],
       fee
     );
     const createMarketReceipt = await createMarketTx.wait();
 
     const iface = new ethers.Interface(FixedProductMarketMakerFactoryArtifact.abi);
     const parsedLogs = createMarketReceipt.logs
-      .map(log => {
+      .map((log: ethers.Log) => {
         try {
           return iface.parseLog(log);
         } catch (e) {
           return null;
         }
       })
-      .filter(log => log && log.name === 'FixedProductMarketMakerCreation');
+      .filter((log: ethers.LogDescription | null): log is ethers.LogDescription => log !== null && log.name === 'FixedProductMarketMakerCreation');
 
     if (parsedLogs.length === 0) {
       return res.status(500).json({ message: 'FixedProductMarketMakerCreation event not found' });
     }
     const fixedProductMarketMakerAddress = parsedLogs[0].args.fixedProductMarketMaker;
-    
-    // Store the market address
+    console.log('FixedProductMarketMaker Address:', fixedProductMarketMakerAddress);
+    // Update the liveMarket object with the marketAddress
     liveMarket.marketAddress = fixedProductMarketMakerAddress;
+
+    // Clear any existing live markets and save the new one
+    await LiveMarket.deleteMany();
+    const savedLiveMarket = new LiveMarket(liveMarket);
     await savedLiveMarket.save();
 
     await Submission.deleteMany(); // Clear submissions for next cycle
     await resetVotes(); // Reset votes in database
 
-    res.status(201).json(liveMarket);
+    res.status(201).json(savedLiveMarket);
   } catch (err) {
     res.status(500).json({ message: 'Error setting live market', error: err });
   }
 });
+
 
 
 
@@ -390,15 +403,79 @@ app.post('/api/buy-outcome', async (req: Request, res: Response) => {
   }
 });
 
+app.post('/api/calc-sell-amount', async (req: Request, res: Response) => {
+  const { outcomeIndex, amount } = req.body;
 
-app.post('/api/sell-outcome', async (req: Request, res: Response) => {
-  const { outcomeIndex, amount, maxOutcomeTokensToSell } = req.body;
   if (!liveMarket || !liveMarket.marketAddress) {
     return res.status(400).json({ message: 'No live market available' });
   }
+
   try {
+    console.log('Calculating Sell Amount with Parameters:');
+    console.log('Outcome Index:', outcomeIndex);
+    console.log('Amount:', amount);
+
     const amountParsed = ethers.parseUnits(amount, 18);
     const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
+
+    console.log('Parsed Amount:', amountParsed.toString());
+    console.log('Market Address:', liveMarket.marketAddress);
+
+    const maxOutcomeTokensToSell = await fixedProductMarketMaker.calcSellAmount(amountParsed, outcomeIndex);
+    console.log('Max Outcome Tokens to Sell:', maxOutcomeTokensToSell.toString());
+
+    res.status(200).json({ maxOutcomeTokensToSell: maxOutcomeTokensToSell.toString() });
+  } catch (error) {
+    console.error('Error calculating sell amount:', error);
+
+    if (error instanceof Error) {
+      console.error('Error Message:', error.message);
+
+      const errorAny = error as any;  // Explicitly cast to any for dynamic properties
+
+      if (errorAny.code) {
+        console.error('Error Code:', errorAny.code);
+      }
+
+      if (errorAny.transaction) {
+        console.error('Transaction Data:', errorAny.transaction);
+      }
+
+      if (errorAny.receipt) {
+        console.error('Transaction Receipt:', errorAny.receipt);
+      }
+    }
+
+    res.status(500).json({ message: 'Error calculating sell amount', error });
+  }
+});
+
+
+
+app.post('/api/sell-outcome', async (req: Request, res: Response) => {
+  const { outcomeIndex, amount, maxOutcomeTokensToSell } = req.body;
+
+  if (!liveMarket || !liveMarket.marketAddress) {
+    return res.status(400).json({ message: 'No live market available' });
+  }
+
+  try {
+    console.log('Selling Outcome Shares with Parameters:');
+    console.log('Outcome Index:', outcomeIndex);
+    console.log('Amount:', amount);
+    console.log('Max Outcome Tokens to Sell:', maxOutcomeTokensToSell);
+
+    const amountParsed = ethers.parseUnits(amount, 18);
+    const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
+
+    console.log('Parsed Amount:', amountParsed.toString());
+    console.log('Market Address:', liveMarket.marketAddress);
+
+    // Approve the ERC1155 tokens
+    const approveERC1155Tx = await conditionalTokens.setApprovalForAll(liveMarket.marketAddress, true);
+    await approveERC1155Tx.wait();
+    console.log("ERC1155 tokens approved for FixedProductMarketMaker:", approveERC1155Tx.hash);
+
     const sellOutcomeTx = await fixedProductMarketMaker.sell(amountParsed, outcomeIndex, maxOutcomeTokensToSell);
     await sellOutcomeTx.wait();
     console.log("Outcome shares sold:", sellOutcomeTx.hash);
@@ -406,9 +483,29 @@ app.post('/api/sell-outcome', async (req: Request, res: Response) => {
     res.status(200).json({ message: 'Outcome shares sold', txHash: sellOutcomeTx.hash });
   } catch (error) {
     console.error('Error selling outcome shares:', error);
+
+    if (error instanceof Error) {
+      console.error('Error Message:', error.message);
+
+      const errorAny = error as any;  // Explicitly cast to any for dynamic properties
+
+      if (errorAny.code) {
+        console.error('Error Code:', errorAny.code);
+      }
+
+      if (errorAny.transaction) {
+        console.error('Transaction Data:', errorAny.transaction);
+      }
+
+      if (errorAny.receipt) {
+        console.error('Transaction Receipt:', errorAny.receipt);
+      }
+    }
+
     res.status(500).json({ message: 'Error selling outcome shares', error });
   }
 });
+
 
 
 

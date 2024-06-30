@@ -10,7 +10,7 @@ const LiveMarketSchema = new mongoose.Schema({
     yes: { type: Number, required: true },
     no: { type: Number, required: true }
   },
-  marketAddress: { type: String, required: true } // Add this line
+  marketAddress: { type: String, required: true } 
 });
 
 const LiveMarket = mongoose.model('LiveMarket', LiveMarketSchema);

@@ -145,7 +145,10 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 **Today's Progress**: I spent today really understanding the solution I found yesterady, cleaning it up and adding final functionalities to our script. First I added console.logs to understand every token movement when buy, addFunding and their opposites are run. I then added a script to work out the price of the outcome tokens (i.e. their probabililties). To do this I had to make getPoolbalances public in the contract which I didnt like. I still wonder how Gnosis gets prices out. Finally then I added a fee to the script to see what would happen. This also meant using any last untouched functions in the contract to check totalfees, fees I can claim, and withdraw fees. These all ran nicely, however the contract after the withdrawFee function did hit nonce and gas issues. Annoying but Ill come back to it
 ### Day47:
 **Today's Progress**: Added some starter code to refactor my server.ts in order to work with my newly deployed base gnosis contracts. Lots of iterations and testing to go, but a good start
-
+### Day48:
+**Today's Progress**: none
+### Day49:
+**Today's Progress**: Great, so took some debugging my server can now set a market, add liquidity, remove liquidity, buy outcome tokens, sell outcomes. I still need to add 1 - the rest of the functionality from testmarket.js (i.e. collectprices, withdrawFees, redeempositions, resolve the condition) and then 2 - add new stuff like checking how much liquidity is in the market, how many buy or sell shares. etc
 
 TO DO IDEAS:
 Essentials for Later Development

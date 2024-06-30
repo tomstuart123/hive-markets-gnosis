@@ -9,7 +9,7 @@ const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 const factoryAddress = process.env.FIXED_PRODUCT_MARKET_MAKER_FACTORY_ADDRESS;
 const conditionalTokensAddress = process.env.CONDITIONAL_TOKENS_CONTRACT_ADDRESS;
 const tokenAddress = process.env.TOKEN_CONTRACT_ADDRESS;
-
+ 
 const FixedProductMarketMakerFactoryArtifact = require('../artifacts/contracts/FixedProductMarketMakerFactory.sol/FixedProductMarketMakerFactory.json');
 const FixedProductMarketMakerArtifact = require('../artifacts/contracts/FixedProductMarketMaker.sol/FixedProductMarketMaker.json');
 const ConditionalTokensArtifact = require('../artifacts/contracts/ConditionalTokens.sol/ConditionalTokens.json');
