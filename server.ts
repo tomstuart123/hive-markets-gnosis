@@ -42,6 +42,7 @@ interface LiveMarket extends Submission {
     no: number;
   };
   marketAddress: string; // Add this line
+  questionId: string;
 }
 
 // let submissions: Submission[] = [];
@@ -239,20 +240,21 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
     }
 
     const winningSubmission = submissions.reduce((prev, current) => (prev.votes > current.votes ? prev : current));
-    liveMarket = {
-      ...winningSubmission.toObject(),
-      trading: {
-        yes: 0.5, // Example initial trading value
-        no: 0.5  // Example initial trading value
-      },
-      marketAddress: '' // Initialize the marketAddress field, we will update it later
-    };
-
     // Get the questionId from the submission ID
     const uniqueString = `${(winningSubmission._id as string).toString()}-${Date.now()}`;
     const questionId = ethers.keccak256(ethers.toUtf8Bytes(uniqueString));
     const oracle = wallet.address;
     const outcomeSlotCount = 2; // For yes/no market
+
+    const newLiveMarket: LiveMarket = {
+      ...winningSubmission.toObject(),
+      trading: {
+        yes: 0,
+        no: 0
+      },
+      marketAddress: '',
+      questionId: questionId
+    };
 
     try {
       const prepareConditionTx = await conditionalTokens.prepareCondition(oracle, questionId, outcomeSlotCount, {
@@ -300,12 +302,15 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
     const fixedProductMarketMakerAddress = parsedLogs[0].args.fixedProductMarketMaker;
     console.log('FixedProductMarketMaker Address:', fixedProductMarketMakerAddress);
     // Update the liveMarket object with the marketAddress
-    liveMarket.marketAddress = fixedProductMarketMakerAddress;
+    newLiveMarket.marketAddress = fixedProductMarketMakerAddress;
 
     // Clear any existing live markets and save the new one
     await LiveMarket.deleteMany();
-    const savedLiveMarket = new LiveMarket(liveMarket);
+    const savedLiveMarket = new LiveMarket(newLiveMarket);
     await savedLiveMarket.save();
+
+    // Update the global liveMarket variable
+    liveMarket = savedLiveMarket.toObject();
 
     await Submission.deleteMany(); // Clear submissions for next cycle
     await resetVotes(); // Reset votes in database
@@ -356,8 +361,6 @@ app.post('/api/add-liquidity', async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error adding liquidity', error });
   }
 });
-
-
 
 
 app.post('/api/remove-liquidity', async (req: Request, res: Response) => {
@@ -506,10 +509,143 @@ app.post('/api/sell-outcome', async (req: Request, res: Response) => {
   }
 });
 
+app.post('/api/resolve-condition', async (req: Request, res: Response) => {
+  const { payoutNumerators } = req.body;
+
+  if (!liveMarket || !liveMarket.marketAddress || !liveMarket.questionId) {
+    return res.status(400).json({ message: 'No live market available or question ID is missing' });
+  }
+
+  console.log('address', liveMarket.marketAddress)
+  console.log('question', liveMarket.questionId)
+
+  try {
+    const resolveTx = await conditionalTokens.reportPayouts(liveMarket.questionId, payoutNumerators);
+    await resolveTx.wait();
+    console.log("Condition resolved:", resolveTx.hash);
+
+    res.status(200).json({ message: 'Condition resolved', txHash: resolveTx.hash });
+  } catch (error) {
+    console.error('Error resolving condition:', error);
+    res.status(500).json({ message: 'Error resolving condition', error });
+  }
+});
+
+
+app.post('/api/redeem-positions', async (req: Request, res: Response) => {
+  const { indexSets } = req.body;
+
+  if (!liveMarket || !liveMarket.marketAddress || !liveMarket.questionId) {
+    return res.status(400).json({ message: 'No live market available or question ID is missing' });
+  }
+
+  try {
+    const conditionId = await conditionalTokens.getConditionId(wallet.address, liveMarket.questionId, 2);
+    console.log('Condition ID for redemption:', conditionId);
+
+    // Check if the condition has been resolved by checking the payoutDenominator
+    const payoutDenominator = await conditionalTokens.payoutDenominator(conditionId);
+    if (payoutDenominator.toString() === '0') {
+      return res.status(400).json({ message: 'Condition has not been resolved yet' });
+    }
+
+    const redeemTx = await conditionalTokens.redeemPositions(
+      collateralToken.target,
+      ethers.ZeroHash,
+      conditionId,
+      indexSets
+    );
+    await redeemTx.wait();
+    console.log("Positions redeemed:", redeemTx.hash);
+
+    res.status(200).json({ message: 'Positions redeemed', txHash: redeemTx.hash });
+  } catch (error) {
+    console.error('Error redeeming positions:', error);
+
+    if (error instanceof Error) {
+      console.error('Error Message:', error.message);
+
+      const errorAny = error as any;  // Explicitly cast to any for dynamic properties
+
+      if (errorAny.code) {
+        console.error('Error Code:', errorAny.code);
+      }
+
+      if (errorAny.transaction) {
+        console.error('Transaction Data:', errorAny.transaction);
+      }
+
+      if (errorAny.receipt) {
+        console.error('Transaction Receipt:', errorAny.receipt);
+      }
+    }
+
+    res.status(500).json({ message: 'Error redeeming positions', error });
+  }
+});
+
+
+// app.get('/api/current-liquidity', async (req: Request, res: Response) => {
+//   if (!liveMarket || !liveMarket.marketAddress) {
+//     return res.status(400).json({ message: 'No live market available' });
+//   }
+
+//   try {
+//     const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
+//     const poolBalances = await fixedProductMarketMaker.getPoolBalances();
+//     console.log("Pool Balances:", poolBalances);
+
+//     res.status(200).json({ poolBalances });
+//   } catch (error) {
+//     console.error('Error fetching current liquidity:', error);
+//     res.status(500).json({ message: 'Error fetching current liquidity', error });
+//   }
+// });
+
+// app.get('/api/token-prices', async (req: Request, res: Response) => {
+//   if (!liveMarket || !liveMarket.marketAddress) {
+//     return res.status(400).json({ message: 'No live market available' });
+//   }
+
+//   try {
+//     const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
+//     const poolBalances = await fixedProductMarketMaker.getPoolBalances();
+
+//     const totalBalance = poolBalances.reduce((acc, balance) => acc.add(balance), ethers.BigNumber.from(0));
+//     const prices = poolBalances.map(balance => balance.mul(ethers.constants.WeiPerEther).div(totalBalance));
+    
+//     const formattedPrices = prices.map(price => ethers.utils.formatUnits(price, 18));
+
+//     res.status(200).json({ prices: formattedPrices });
+//   } catch (error) {
+//     console.error('Error fetching token prices:', error);
+//     res.status(500).json({ message: 'Error fetching token prices', error });
+//   }
+// });
+
+// app.post('/api/withdraw-fees', async (req: Request, res: Response) => {
+//   const { account } = req.body;
+
+//   if (!liveMarket || !liveMarket.marketAddress) {
+//     return res.status(400).json({ message: 'No live market available' });
+//   }
+
+//   try {
+//     const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
+//     const withdrawFeesTx = await fixedProductMarketMaker.withdrawFees(account);
+//     await withdrawFeesTx.wait();
+//     console.log("Fees withdrawn:", withdrawFeesTx.hash);
+
+//     res.status(200).json({ message: 'Fees withdrawn', txHash: withdrawFeesTx.hash });
+//   } catch (error) {
+//     console.error('Error withdrawing fees:', error);
+//     res.status(500).json({ message: 'Error withdrawing fees', error });
+//   }
+// });
 
 
 
-
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
+  await initializeLiveMarket();
   console.log(`Server running on port ${PORT}`);
 });
