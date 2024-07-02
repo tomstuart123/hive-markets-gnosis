@@ -585,22 +585,37 @@ app.post('/api/redeem-positions', async (req: Request, res: Response) => {
 });
 
 
-// app.get('/api/current-liquidity', async (req: Request, res: Response) => {
-//   if (!liveMarket || !liveMarket.marketAddress) {
-//     return res.status(400).json({ message: 'No live market available' });
-//   }
+app.get('/api/current-liquidity', async (req: Request, res: Response) => {
+  if (!liveMarket || !liveMarket.marketAddress) {
+    return res.status(400).json({ message: 'No live market available' });
+  }
 
-//   try {
-//     const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
-//     const poolBalances = await fixedProductMarketMaker.getPoolBalances();
-//     console.log("Pool Balances:", poolBalances);
+  try {
+    const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
+    
+    // Fetch outcome token balances
+    const poolBalances = await fixedProductMarketMaker.getPoolBalances();
+    console.log("Pool Balances:", poolBalances);
 
-//     res.status(200).json({ poolBalances });
-//   } catch (error) {
-//     console.error('Error fetching current liquidity:', error);
-//     res.status(500).json({ message: 'Error fetching current liquidity', error });
-//   }
-// });
+    // Fetch collateral token balance
+    const collateralBalance = await collateralToken.balanceOf(liveMarket.marketAddress);
+    console.log("Collateral Token Balance:", ethers.formatUnits(collateralBalance, 18));
+
+     // Calculate outcome token prices
+     const totalBalance = poolBalances.reduce((acc: bigint, balance: bigint) => acc + balance, BigInt(0));
+     const prices = poolBalances.map((balance: bigint) => (balance * 10n ** 18n) / totalBalance);
+ 
+     res.status(200).json({
+       poolBalances: poolBalances.map((balance: bigint) => balance.toString()),
+       collateralBalance: ethers.formatUnits(collateralBalance, 18), // Format to a readable number
+       prices: prices.map((price: bigint) => ethers.formatUnits(price, 18)) // Format prices to readable numbers
+     });
+  } catch (error) {
+    console.error('Error fetching current liquidity:', error);
+    res.status(500).json({ message: 'Error fetching current liquidity', error });
+  }
+});
+
 
 // app.get('/api/token-prices', async (req: Request, res: Response) => {
 //   if (!liveMarket || !liveMarket.marketAddress) {
@@ -614,7 +629,7 @@ app.post('/api/redeem-positions', async (req: Request, res: Response) => {
 //     const totalBalance = poolBalances.reduce((acc, balance) => acc.add(balance), ethers.BigNumber.from(0));
 //     const prices = poolBalances.map(balance => balance.mul(ethers.constants.WeiPerEther).div(totalBalance));
     
-//     const formattedPrices = prices.map(price => ethers.utils.formatUnits(price, 18));
+//     const formattedPrices = prices.map(price => ethers.formatUnits(price, 18));
 
 //     res.status(200).json({ prices: formattedPrices });
 //   } catch (error) {

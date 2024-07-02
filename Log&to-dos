@@ -150,7 +150,9 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 ### Day49:
 **Today's Progress**: Great, so took some debugging my server can now set a market, add liquidity, remove liquidity, buy outcome tokens, sell outcomes. I still need to add 1 - the rest of the functionality from testmarket.js (i.e. collectprices, withdrawFees, redeempositions, resolve the condition) and then 2 - add new stuff like checking how much liquidity is in the market, how many buy or sell shares. etc
 ### Day50:
-**Today's Progress**: Cool so I added redeem positions and resolve the condition to my endpoints. Took some back and forth cos it turns out I wasn't wiping the last prediction market correctly. Solved now. Next I should have the easier read functions of collectPrices, and check liquidity in the market. Withdraw fees didn't work in test-market.js so that's final boss pre front end. 
+**Today's Progress**: Cool so I added redeem positions and resolve the condition to my endpoints. Took some back and forth cos it turns out I wasnt wiping the last prediction market correctly. Solved now. Next I should have the easier read functions of collectPrices, and check liquidity in the market. Withdraw fees didnt work in test-market.js so thats final boss pre front end. 
+### Day51:
+**Today's Progress**:added check liquidity in the market and basic pricing. Want to relook at pricing
 
 TO DO IDEAS:
 Essentials for Later Development
