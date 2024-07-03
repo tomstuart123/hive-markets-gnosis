@@ -152,7 +152,14 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 ### Day50:
 **Today's Progress**: Cool so I added redeem positions and resolve the condition to my endpoints. Took some back and forth cos it turns out I wasnt wiping the last prediction market correctly. Solved now. Next I should have the easier read functions of collectPrices, and check liquidity in the market. Withdraw fees didnt work in test-market.js so thats final boss pre front end. 
 ### Day51:
-**Today's Progress**:added check liquidity in the market and basic pricing. Want to relook at pricing
+**Today's Progress**:added check liquidity in the market and basic pricing. 
+
+### Day52:
+**Today's Progress**: Added nonce manager already. We then allowed the server error handling so it fails more gracefully across endpoints. e.g. liquidity to be zero on read so it errored more cleanly. allow endpoints to run when a market is closed. track state fo market resolve/redemption so buy,sell and liquidity only runs when contracts allow. error correctly when you try and buy outcome tokens without liquidity or sell tokens without buying. similar with buying/ removal without liquiduity. Finally, also that you can't resolve twice to stop an ugly error. 
+
+### Day53:
+**Today's Progress**: todo --> we do have an issue in that gnosis' contracts dont allow multiple redemptions. Mine does. something to do with how we use balanceOf and Burn from erc-115
+
 
 TO DO IDEAS:
 Essentials for Later Development
