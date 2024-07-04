@@ -55,6 +55,8 @@ const ConditionalTokensArtifact = require('./artifacts/contracts/ConditionalToke
 const FixedProductMarketMakerFactoryArtifact = require('./artifacts/contracts/FixedProductMarketMakerFactory.sol/FixedProductMarketMakerFactory.json');
 const VotePowerArtifact = require('./artifacts/contracts/votepower.sol/VotePower.json'); // Import the JSON file
 const FixedProductMarketMakerArtifact = require('./artifacts/contracts/FixedProductMarketMaker.sol/FixedProductMarketMaker.json');
+const CTHelpersArtifact = require('./artifacts/contracts/dependencies/CTHelpers.sol/CTHelpers.json');
+
 
 const collateralToken = new ethers.Contract(process.env.TOKEN_CONTRACT_ADDRESS!, ERC20Artifact.abi, managedSigner);
 const factory = new ethers.Contract(
@@ -71,6 +73,12 @@ const conditionalTokens = new ethers.Contract(
 const votePowerContract = new ethers.Contract(
   process.env.VOTE_POWER_CONTRACT_ADDRESS!,
   VotePowerArtifact.abi,
+  managedSigner
+);
+
+const CTHelpers = new ethers.Contract(
+  process.env.CT_HELPERS_CONTRACT_ADDRESS!,
+  CTHelpersArtifact.abi,
   managedSigner
 );
 
@@ -349,9 +357,7 @@ app.post('/api/add-liquidity', async (req: Request, res: Response) => {
 app.post('/api/remove-liquidity', async (req: Request, res: Response) => {
   const { amount } = req.body;
   const liveMarket = await LiveMarket.findOne();
-  if (!liveMarket || liveMarket.isRedeemed) {
-    return res.status(400).json({ message: 'Market is either not live or already redeemed. Cannot remove liquidity.' });
-  }
+  
   if (!liveMarket || !liveMarket.marketAddress) {
     return res.status(400).json({ message: 'No live market available' });
   }
@@ -533,8 +539,8 @@ app.post('/api/resolve-condition', async (req: Request, res: Response) => {
     return res.status(400).json({ message: 'No live market available or question ID is missing' });
   }
 
-  console.log('address', liveMarket.marketAddress);
-  console.log('question', liveMarket.questionId);
+  const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
+
 
   try {
     // Check if the condition has already been resolved
@@ -543,6 +549,17 @@ app.post('/api/resolve-condition', async (req: Request, res: Response) => {
     if (payoutDenominator.toString() !== '0') {
       return res.status(400).json({ message: 'Condition has already been resolved' });
     }
+
+    // Check tokens
+    const poolBalancesBefore = await fixedProductMarketMaker.getPoolBalances();
+    console.log('Market Pool Balances Before resolution:', poolBalancesBefore);
+    const collateralBalanceBefore = await collateralToken.balanceOf(liveMarket.marketAddress);
+    console.log('Market Collateral Balance Before resolution:', ethers.formatUnits(collateralBalanceBefore, 18));
+     const userCollateral = await collateralToken.balanceOf(wallet.address);
+     console.log("User ERC-20 Balance Before resolution:", ethers.formatUnits(userCollateral, 18));
+     const positionId = await fixedProductMarketMaker.positionIds(0);
+     const userOutcomeTokens = await conditionalTokens.balanceOf(wallet.address, positionId);
+     console.log("User Balance of ERC1155 outcome tokens Before resolution:", ethers.formatUnits(userOutcomeTokens, 18));
 
     const resolveTx = await conditionalTokens.reportPayouts(liveMarket.questionId, payoutNumerators);
     await resolveTx.wait();
@@ -556,6 +573,24 @@ app.post('/api/resolve-condition', async (req: Request, res: Response) => {
     );
 
     liveMarket = updatedLiveMarket?.toObject() ?? null;
+
+    //remove
+    if (!liveMarket || !liveMarket.marketAddress || !liveMarket.questionId) {
+      return res.status(400).json({ message: 'No live market available or question ID is missing' });
+    }
+
+    // Check tokens
+    const poolBalancesAfter = await fixedProductMarketMaker.getPoolBalances();
+    console.log('Market Pool Balances after resolution:', poolBalancesAfter);
+    const collateralBalanceAfter = await collateralToken.balanceOf(liveMarket.marketAddress);
+    console.log('Market Collateral Balance after resolution::', ethers.formatUnits(collateralBalanceAfter, 18));
+     const userCollateralAfter = await collateralToken.balanceOf(wallet.address);
+     console.log("User ERC-20 Balance after resolution::", ethers.formatUnits(userCollateralAfter, 18));
+     const positionIdAfter = await fixedProductMarketMaker.positionIds(0);
+     const userOutcomeTokensAfter = await conditionalTokens.balanceOf(wallet.address, positionIdAfter);
+     console.log("User Balance of ERC1155 outcome tokens after resolution::", ethers.formatUnits(userOutcomeTokensAfter, 18));
+
+   
 
     res.status(200).json({ message: 'Condition resolved', txHash: resolveTx.hash });
   } catch (error) {
@@ -580,6 +615,23 @@ app.post('/api/redeem-positions', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Condition has not been resolved yet' });
     }
 
+    console.log('Payout Denominator:', payoutDenominator.toString());
+
+    const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
+
+    // Check tokens
+    const poolBalancesBefore = await fixedProductMarketMaker.getPoolBalances();
+    console.log('Market Pool Balances Before Redemption:', poolBalancesBefore);
+    const collateralBalanceBefore = await collateralToken.balanceOf(liveMarket.marketAddress);
+    console.log('Market Collateral Balance Before Redemption:', ethers.formatUnits(collateralBalanceBefore, 18));
+     const userCollateral = await collateralToken.balanceOf(wallet.address);
+     console.log("User ERC-20 Balance Before Redemption:", ethers.formatUnits(userCollateral, 18));
+     const positionId = await fixedProductMarketMaker.positionIds(0);
+     const userOutcomeTokens = await conditionalTokens.balanceOf(wallet.address, positionId);
+     console.log("User Balance of ERC1155 outcome tokens Before Redemption:", ethers.formatUnits(userOutcomeTokens, 18));
+
+
+
     const redeemTx = await conditionalTokens.redeemPositions(
       collateralToken.target,
       ethers.ZeroHash,
@@ -597,6 +649,24 @@ app.post('/api/redeem-positions', async (req: Request, res: Response) => {
     );
 
     liveMarket = updatedLiveMarket?.toObject() ?? null;
+
+    console.log('Updated live market after redemption:', liveMarket);
+
+      //remove
+    if (!liveMarket || !liveMarket.marketAddress || !liveMarket.questionId) {
+      return res.status(400).json({ message: 'No live market available or question ID is missing' });
+    }
+
+     // Check tokens
+     const poolBalancesAfter = await fixedProductMarketMaker.getPoolBalances();
+     console.log('Market Pool Balances after Redemption:', poolBalancesAfter);
+     const collateralBalanceAfter = await collateralToken.balanceOf(liveMarket.marketAddress);
+     console.log('Market Collateral Balance after Redemption:', ethers.formatUnits(collateralBalanceAfter, 18));
+      const userCollateralAfter = await collateralToken.balanceOf(wallet.address);
+      console.log("User ERC-20 Balance after Redemption:", ethers.formatUnits(userCollateralAfter, 18));
+      const positionIdAfter = await fixedProductMarketMaker.positionIds(0);
+      const userOutcomeTokensAfter = await conditionalTokens.balanceOf(wallet.address, positionIdAfter);
+      console.log("User Balance of ERC1155 outcome tokens after Redemption:", ethers.formatUnits(userOutcomeTokensAfter, 18));
 
     res.status(200).json({ message: 'Positions redeemed', txHash: redeemTx.hash });
   } catch (error) {

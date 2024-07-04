@@ -158,7 +158,7 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 **Today's Progress**: Added nonce manager already. We then allowed the server error handling so it fails more gracefully across endpoints. e.g. liquidity to be zero on read so it errored more cleanly. allow endpoints to run when a market is closed. track state fo market resolve/redemption so buy,sell and liquidity only runs when contracts allow. error correctly when you try and buy outcome tokens without liquidity or sell tokens without buying. similar with buying/ removal without liquiduity. Finally, also that you can't resolve twice to stop an ugly error. 
 
 ### Day53:
-**Today's Progress**: todo --> we do have an issue in that gnosis' contracts dont allow multiple redemptions. Mine does. something to do with how we use balanceOf and Burn from erc-115
+**Today's Progress**: confirmed the gnosis contracts handle the user positions correctly. Still unsure why we can call it so many times. Will pick it up tomorrow 
 
 
 TO DO IDEAS:
