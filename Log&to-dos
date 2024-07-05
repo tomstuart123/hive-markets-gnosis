@@ -160,6 +160,15 @@ to-do gaps in functionality. 1. Reset will reset submissions forever. 2. Front-e
 ### Day53:
 **Today's Progress**: confirmed the gnosis contracts handle the user positions correctly. Still unsure why we can call it so many times. Will pick it up tomorrow 
 
+### Day54:
+**Today's Progress**: also confirmed why gnosis allows people to redeem multiple times. See full explanation via a case study below. This should close up v1 of error handling. I then returned to fees, adding two endpoints, one to read the total collected and withdrawable fees by the user. Then one allowing a user to withdraw. That should be it for endpoints
+
+User held outcometokens from buying outcome 1
+user redeemed these outcome tokens for 2 erc-20 collateral
+contracts allow user to then remove liquidity (even after redemption) so they received more outcome tokens 
+user then must be allowed to redeem multiple times to get back the erc-20 for these last outcome tokens for 2 erc-20
+
+-
 
 TO DO IDEAS:
 Essentials for Later Development

@@ -441,9 +441,11 @@ app.post('/api/calc-sell-amount', async (req: Request, res: Response) => {
     const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
 
      // Fetch user's balance for the specific outcome token
-     const userBalance = await conditionalTokens.balanceOf(wallet.address, liveMarket.questionId);
+     const positionId = await fixedProductMarketMaker.positionIds(0);
+     const userBalance = await conditionalTokens.balanceOf(wallet.address, positionId);
+     console.log('userOutcometokens to sell', userBalance)
      if (BigInt(userBalance) === BigInt(0)) {
-       return res.status(400).json({ message: 'You do not have any tokens to sell.' });
+       return res.status(400).json({ message: 'You do not have any tokens to sell.',   });
      }
 
     const maxOutcomeTokensToSell = await fixedProductMarketMaker.calcSellAmount(amountParsed, outcomeIndex);
@@ -492,7 +494,9 @@ app.post('/api/sell-outcome', async (req: Request, res: Response) => {
     const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
 
     // Fetch user's balance for the specific outcome token
-    const userBalance = await conditionalTokens.balanceOf(wallet.address, liveMarket.questionId);
+    const positionId = await fixedProductMarketMaker.positionIds(0);
+    const userBalance = await conditionalTokens.balanceOf(wallet.address, positionId);
+    console.log('userOutcometokens to sell', userBalance)
     if (BigInt(userBalance) === BigInt(0)) {
       return res.status(400).json({ message: 'You do not have any tokens to sell.' });
     }
@@ -560,6 +564,10 @@ app.post('/api/resolve-condition', async (req: Request, res: Response) => {
      const positionId = await fixedProductMarketMaker.positionIds(0);
      const userOutcomeTokens = await conditionalTokens.balanceOf(wallet.address, positionId);
      console.log("User Balance of ERC1155 outcome tokens Before resolution:", ethers.formatUnits(userOutcomeTokens, 18));
+     const preLiquidityBalance = await fixedProductMarketMaker.balanceOf(wallet.address);
+     console.log("User's liquidity token balance post resolution:", ethers.formatUnits(preLiquidityBalance, 18));
+     const preLiquidityInMarket = await fixedProductMarketMaker.balanceOf(wallet.address);
+     console.log("Market's liquidity token balance pre resolution:", ethers.formatUnits(preLiquidityInMarket, 18));
 
     const resolveTx = await conditionalTokens.reportPayouts(liveMarket.questionId, payoutNumerators);
     await resolveTx.wait();
@@ -589,7 +597,10 @@ app.post('/api/resolve-condition', async (req: Request, res: Response) => {
      const positionIdAfter = await fixedProductMarketMaker.positionIds(0);
      const userOutcomeTokensAfter = await conditionalTokens.balanceOf(wallet.address, positionIdAfter);
      console.log("User Balance of ERC1155 outcome tokens after resolution::", ethers.formatUnits(userOutcomeTokensAfter, 18));
-
+     const postLiquidityBalance = await fixedProductMarketMaker.balanceOf(wallet.address);
+     console.log("User's liquidity token balance post resolution:", ethers.formatUnits(postLiquidityBalance, 18));
+     const postLiquidityInMarket = await fixedProductMarketMaker.balanceOf(wallet.address);
+     console.log("Market's liquidity token balance post resolution:", ethers.formatUnits(postLiquidityInMarket, 18));
    
 
     res.status(200).json({ message: 'Condition resolved', txHash: resolveTx.hash });
@@ -629,7 +640,10 @@ app.post('/api/redeem-positions', async (req: Request, res: Response) => {
      const positionId = await fixedProductMarketMaker.positionIds(0);
      const userOutcomeTokens = await conditionalTokens.balanceOf(wallet.address, positionId);
      console.log("User Balance of ERC1155 outcome tokens Before Redemption:", ethers.formatUnits(userOutcomeTokens, 18));
-
+     const preLiquidityBalance = await fixedProductMarketMaker.balanceOf(wallet.address);
+     console.log("User's liquidity token balance post resolution:", ethers.formatUnits(preLiquidityBalance, 18));
+     const preLiquidityInMarket = await fixedProductMarketMaker.balanceOf(wallet.address);
+     console.log("Market's liquidity token balance pre resolution:", ethers.formatUnits(preLiquidityInMarket, 18));
 
 
     const redeemTx = await conditionalTokens.redeemPositions(
@@ -667,6 +681,10 @@ app.post('/api/redeem-positions', async (req: Request, res: Response) => {
       const positionIdAfter = await fixedProductMarketMaker.positionIds(0);
       const userOutcomeTokensAfter = await conditionalTokens.balanceOf(wallet.address, positionIdAfter);
       console.log("User Balance of ERC1155 outcome tokens after Redemption:", ethers.formatUnits(userOutcomeTokensAfter, 18));
+      const postLiquidityBalance = await fixedProductMarketMaker.balanceOf(wallet.address);
+      console.log("User's liquidity token balance post resolution:", ethers.formatUnits(postLiquidityBalance, 18));
+      const postLiquidityInMarket = await fixedProductMarketMaker.balanceOf(wallet.address);
+      console.log("Market's liquidity token balance post resolution:", ethers.formatUnits(postLiquidityInMarket, 18));
 
     res.status(200).json({ message: 'Positions redeemed', txHash: redeemTx.hash });
   } catch (error) {
@@ -741,34 +759,85 @@ app.get('/api/get-liquidity-and-prices', async (req: Request, res: Response) => 
 });
 
 
-// app.post('/api/withdraw-fees', async (req: Request, res: Response) => {
-//   const { account } = req.body;
-  // if (!await isMarketActive()) {
-  //   return res.status(400).json({ message: 'Market is not active' });
-  // }
-//   if (!liveMarket || !liveMarket.marketAddress) {
-//     return res.status(400).json({ message: 'No live market available' });
-//   }
+app.get('/api/fees', async (req: Request, res: Response) => {
+  const { account } = req.query;
 
-//   try {
-//     const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
+  if (!account || typeof account !== 'string') {
+    return res.status(400).json({ message: 'Account address is required and must be a string' });
+  }
 
-//     const collectedFees = await fixedProductMarketMaker.collectedFees();
-//     console.log("Collected Fees:", ethers.formatUnits(collectedFees, 18));
+  if (!liveMarket || !liveMarket.marketAddress) {
+    return res.status(400).json({ message: 'No live market available' });
+  }
 
-//     const withdrawableFees = await fixedProductMarketMaker.feesWithdrawableBy(account);
-//     console.log("Withdrawable Fees for user:", ethers.formatUnits(withdrawableFees, 18));
+  try {
+    const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
 
-//     const withdrawFeesTx = await fixedProductMarketMaker.withdrawFees(account);
-//     await withdrawFeesTx.wait();
-//     console.log("Fees withdrawn:", withdrawFeesTx.hash);
+    const collectedFees = await fixedProductMarketMaker.collectedFees();
+    console.log("Collected Fees:", ethers.formatUnits(collectedFees, 18));
 
-//     res.status(200).json({ message: 'Fees withdrawn', txHash: withdrawFeesTx.hash });
-//   } catch (error) {
-//     console.error('Error withdrawing fees:', error);
-//     res.status(500).json({ message: 'Error withdrawing fees', error });
-//   }
-// });
+    if (BigInt(collectedFees) === BigInt(0)) {
+      return res.status(200).json({ message: 'No collected fees', collectedFees: '0', withdrawableFees: '0' });
+    }
+
+    const withdrawableFees = await fixedProductMarketMaker.feesWithdrawableBy(account);
+    console.log("Withdrawable Fees for user:", ethers.formatUnits(withdrawableFees, 18));
+
+    if (BigInt(withdrawableFees) === BigInt(0)) {
+      return res.status(200).json({ message: 'No fees available for withdrawal', collectedFees: '0', withdrawableFees: '0' });
+    }
+
+    res.status(200).json({
+      collectedFees: ethers.formatUnits(collectedFees, 18),
+      withdrawableFees: ethers.formatUnits(withdrawableFees, 18),
+    });
+  } catch (error) {
+    console.error('Error reading fees:', error);
+    res.status(500).json({ message: 'Error reading fees', error });
+  }
+});
+
+
+app.post('/api/withdraw-fees', async (req: Request, res: Response) => {
+  const { account } = req.body;
+  
+  if (!account || typeof account !== 'string') {
+    return res.status(400).json({ message: 'Account address is required and must be a string' });
+  }
+
+  if (!liveMarket || !liveMarket.marketAddress) {
+    return res.status(400).json({ message: 'No live market available' });
+  }
+
+  try {
+    const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
+
+    // check fees available for collection
+    const collectedFees = await fixedProductMarketMaker.collectedFees();
+    console.log("Collected Fees:", ethers.formatUnits(collectedFees, 18));
+
+    if (BigInt(collectedFees) === BigInt(0)) {
+      return res.status(200).json({ message: 'No collected fees or fees withdrawn', collectedFees: '0', withdrawableFees: '0' });
+    }
+
+    const withdrawableFees = await fixedProductMarketMaker.feesWithdrawableBy(account);
+    console.log("Withdrawable Fees for user:", ethers.formatUnits(withdrawableFees, 18));
+
+    if (BigInt(withdrawableFees) === BigInt(0)) {
+      return res.status(200).json({ message: 'No fees available for withdrawal', collectedFees: '0', withdrawableFees: '0' });
+    }
+
+    const withdrawFeesTx = await fixedProductMarketMaker.withdrawFees(account);
+    await withdrawFeesTx.wait();
+    console.log("Fees withdrawn:", withdrawFeesTx.hash);
+
+    res.status(200).json({ message: 'Fees withdrawn', txHash: withdrawFeesTx.hash });
+  } catch (error) {
+    console.error('Error withdrawing fees:', error);
+    res.status(500).json({ message: 'Error withdrawing fees', error });
+  }
+});
+
 
 app.listen(PORT, async () => {
   await initializeLiveMarket();

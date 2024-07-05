@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom'; // Import Link from react-router-dom
-// import CountdownTimer from '../components/Countdown'; // Import the CountdownTimer component
-
 
 // Define the interface for the market data
 interface Market {
@@ -50,7 +48,6 @@ const HomePage = () => {
   const handleBuyOutcome = async (outcomeIndex: number) => {
     try {
       const response = await axios.post('http://localhost:3001/api/buy-outcome', {
-        marketId: 1, // Assuming market ID is 1
         outcomeIndex,
         amount,
       });
@@ -63,7 +60,6 @@ const HomePage = () => {
   const handleSellOutcome = async (outcomeIndex: number) => {
     try {
       const response = await axios.post('http://localhost:3001/api/sell-outcome', {
-        marketId: 1, // Assuming market ID is 1
         outcomeIndex,
         amount,
       });
@@ -76,7 +72,6 @@ const HomePage = () => {
   const handleAddLiquidity = async () => {
     try {
       const response = await axios.post('http://localhost:3001/api/add-liquidity', {
-        marketId: 1, // Assuming market ID is 1
         amount,
       });
       console.log('Liquidity added:', response.data);
@@ -88,7 +83,6 @@ const HomePage = () => {
   const handleRemoveLiquidity = async () => {
     try {
       const response = await axios.post('http://localhost:3001/api/remove-liquidity', {
-        marketId: 1, // Assuming market ID is 1
         amount,
       });
       console.log('Liquidity removed:', response.data);
@@ -152,7 +146,7 @@ const HomePage = () => {
             />
             <button onClick={handleRemoveLiquidity}>Remove Liquidity</button>
           </div>
-        
+
         </>
       ) : error ? (
         <>
