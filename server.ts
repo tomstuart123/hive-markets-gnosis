@@ -130,6 +130,42 @@ const resetVotes = async () => {
 };
 
 
+const findReturnAmount = async (fixedProductMarketMaker: any, outcomeIndex: number, outcomeTokensToSell: string): Promise<string> => {
+  let lowerBound = 0n;
+  let upperBound = BigInt("1000000000000000000"); // Start with a high upper bound in units of ether (1 ether)
+  let mid: bigint;
+  let calculatedOutcomeTokens: bigint;
+
+  while (lowerBound < upperBound) {
+    mid = (lowerBound + upperBound) / 2n;
+    console.log('current mid:', mid);
+
+    try {
+      calculatedOutcomeTokens = BigInt((await fixedProductMarketMaker.calcSellAmount(mid, outcomeIndex)).toString());
+    } catch (error) {
+      console.error('Error in calcSellAmount:', error);
+      upperBound = mid; // Reduce upper bound if error occurs
+      continue;
+    }
+
+    const outcomeTokensParsedBigInt = ethers.parseUnits(outcomeTokensToSell, 18);
+    // console.log(calculatedOutcomeTokens,outcomeTokensParsedBigInt)
+
+    if (calculatedOutcomeTokens === outcomeTokensParsedBigInt) {
+      return ethers.formatUnits(mid, 18);
+    }
+
+    if (calculatedOutcomeTokens < outcomeTokensParsedBigInt) {
+      lowerBound = mid + 1n;
+    } else {
+      upperBound = mid;
+    }
+  }
+
+  return ethers.formatUnits(lowerBound, 18);
+};
+
+
 
 
 app.get('/api/submissions', async (req: Request, res: Response) => {
@@ -424,6 +460,8 @@ app.post('/api/buy-outcome', async (req: Request, res: Response) => {
   }
 });
 
+
+
 app.post('/api/calc-sell-amount', async (req: Request, res: Response) => {
   const { outcomeIndex, amount } = req.body;
 
@@ -447,7 +485,8 @@ app.post('/api/calc-sell-amount', async (req: Request, res: Response) => {
      if (BigInt(userBalance) === BigInt(0)) {
        return res.status(400).json({ message: 'You do not have any tokens to sell.',   });
      }
-
+     console.log('outcome',outcomeIndex)
+     console.log('final lowerbound proper', amountParsed)
     const maxOutcomeTokensToSell = await fixedProductMarketMaker.calcSellAmount(amountParsed, outcomeIndex);
     console.log('Max Outcome Tokens to Sell:', maxOutcomeTokensToSell.toString());
 
@@ -477,6 +516,77 @@ app.post('/api/calc-sell-amount', async (req: Request, res: Response) => {
   }
 });
 
+app.post('/api/sell-outcome-true', async (req: Request, res: Response) => {
+  const { outcomeIndex, outcomeTokensToSell } = req.body;
+  const amount = '0.1'; // Hardcoded amount for now
+  const liveMarket = await LiveMarket.findOne();
+  if (!liveMarket || liveMarket.isRedeemed) {
+    return res.status(400).json({ message: 'Market is either not live or already redeemed. Cannot sell outcome shares.' });
+  }
+  if (!liveMarket || !liveMarket.marketAddress) {
+    return res.status(400).json({ message: 'No live market available' });
+  }
+
+  try {
+    const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
+
+    // Fetch user's balance for the specific outcome token
+    const positionId = await fixedProductMarketMaker.positionIds(0);
+    const userBalance = await conditionalTokens.balanceOf(wallet.address, positionId);
+    const outcomeTokensParsedBigInt = ethers.parseUnits(outcomeTokensToSell, 18);
+
+    // console.log('userOutcometokens to sell', userBalance.toString());
+    // console.log('outcomeTokensParsedBigInt', outcomeTokensParsedBigInt.toString());
+    if (userBalance < outcomeTokensToSell) {
+      return res.status(400).json({ message: 'You do not have enough tokens to sell.' });
+    }
+
+    // Calculate return amount using binary search
+    const returnAmountString = await findReturnAmount(fixedProductMarketMaker, outcomeIndex, outcomeTokensToSell);
+    const returnAmountParsed = ethers.parseUnits(returnAmountString, 18); // Convert back to BigInt for the contract call
+    const amountParsed = ethers.parseUnits(amount, 18);
+    // console.log('return amount to be returned:', returnAmountParsed.toString());
+    // console.log('amount to be returned:', returnAmountParsed.toString());
+
+    const approveERC1155Tx = await conditionalTokens.setApprovalForAll(liveMarket.marketAddress, true);
+    await approveERC1155Tx.wait();
+    console.log("ERC1155 tokens approved for FixedProductMçarketMaker:", approveERC1155Tx.hash);
+
+    console.log('true',returnAmountParsed, outcomeIndex, outcomeTokensToSell)
+    console.log('nottrue',amountParsed, outcomeIndex, outcomeTokensToSell)
+
+    const sellOutcomeTx = await fixedProductMarketMaker.sell(returnAmountParsed, outcomeIndex, outcomeTokensToSell);
+
+    await sellOutcomeTx.wait();
+    console.log("Outcome shares sold:", sellOutcomeTx.hash);
+
+    res.status(200).json({ message: 'Outcome shares sold', txHash: sellOutcomeTx.hash });
+  } catch (error) {
+    console.error('Error selling outcome shares:', error);
+
+    if (error instanceof Error) {
+      console.error('Error Message:', error.message);
+
+      const errorAny = error as any; // Explicitly cast to any for dynamic properties
+
+      if (errorAny.code) {
+        console.error('Error Code:', errorAny.code);
+      }
+
+      if (errorAny.transaction) {
+        console.error('Transaction Data:', errorAny.transaction);
+      }
+
+      if (errorAny.receipt) {
+        console.error('Transaction Receipt:', errorAny.receipt);
+      }
+    }
+
+    res.status(500).json({ message: 'Error selling outcome shares', error });
+  }
+});
+
+
 app.post('/api/sell-outcome', async (req: Request, res: Response) => {
   const { outcomeIndex, amount, maxOutcomeTokensToSell } = req.body;
 
@@ -496,7 +606,7 @@ app.post('/api/sell-outcome', async (req: Request, res: Response) => {
     // Fetch user's balance for the specific outcome token
     const positionId = await fixedProductMarketMaker.positionIds(0);
     const userBalance = await conditionalTokens.balanceOf(wallet.address, positionId);
-    console.log('userOutcometokens to sell', userBalance)
+    // console.log('userOutcometokens to sell', userBalance)
     if (BigInt(userBalance) === BigInt(0)) {
       return res.status(400).json({ message: 'You do not have any tokens to sell.' });
     }
@@ -505,6 +615,7 @@ app.post('/api/sell-outcome', async (req: Request, res: Response) => {
     await approveERC1155Tx.wait();
     console.log("ERC1155 tokens approved for FixedProductMarketMaker:", approveERC1155Tx.hash);
 
+    console.log('true',amountParsed, outcomeIndex, maxOutcomeTokensToSell)
     const sellOutcomeTx = await fixedProductMarketMaker.sell(amountParsed, outcomeIndex, maxOutcomeTokensToSell);
 
     await sellOutcomeTx.wait();
