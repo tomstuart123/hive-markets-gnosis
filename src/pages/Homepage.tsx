@@ -19,6 +19,7 @@ const HomePage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [amount, setAmount] = useState<string>(''); // Amount input for buy/sell and liquidity
+  const [maxOutcomeTokensToSell, setMaxOutcomeTokensToSell] = useState<string>(''); // Max outcome tokens to sell input for sell
 
   useEffect(() => {
     const fetchMarket = async () => {
@@ -50,6 +51,7 @@ const HomePage = () => {
       const response = await axios.post('http://localhost:3001/api/buy-outcome', {
         outcomeIndex,
         amount,
+        minOutcomeTokensToBuy: 1 // Assuming minimum outcome tokens to buy is 0
       });
       console.log('Outcome shares bought:', response.data);
     } catch (error) {
@@ -62,6 +64,7 @@ const HomePage = () => {
       const response = await axios.post('http://localhost:3001/api/sell-outcome', {
         outcomeIndex,
         amount,
+        maxOutcomeTokensToSell
       });
       console.log('Outcome shares sold:', response.data);
     } catch (error) {

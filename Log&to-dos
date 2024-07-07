@@ -168,7 +168,8 @@ user redeemed these outcome tokens for 2 erc-20 collateral
 contracts allow user to then remove liquidity (even after redemption) so they received more outcome tokens 
 user then must be allowed to redeem multiple times to get back the erc-20 for these last outcome tokens for 2 erc-20
 
--
+### Day55:
+**Today's Progress**: so gnosis sell function for some reason requires the user to know how much liquidity they want back (instead of how many outcome tokens they want to sell). I tried implementing a method where wed do that mental effort for them. That didnt work at all. Ill keep going for now how they want it... but I dont like how it works currently.
 
 TO DO IDEAS:
 Essentials for Later Development
