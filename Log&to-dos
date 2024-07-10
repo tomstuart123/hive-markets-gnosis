@@ -171,6 +171,14 @@ user then must be allowed to redeem multiple times to get back the erc-20 for th
 ### Day55:
 **Today's Progress**: so gnosis sell function for some reason requires the user to know how much liquidity they want back (instead of how many outcome tokens they want to sell). I tried implementing a method where wed do that mental effort for them. That didnt work at all. Ill keep going for now how they want it... but I dont like how it works currently.
 
+### Day56:
+**Today's Progress**: moved to the market front end. 3 out of 4 endpoints worked. Buy, add and remove liquidity. Basic market details also appears. Sell ofc didnt and Im having issues even from my server. I might have broken somehting yesterday. Will pick up tomorrow
+
+### Day57:
+**Today's Progress**: updated state to store each input field individually so they aren't all updated onChange together. Also added a maxOutcomeTokenToSell input field for now. Still hate this UX for the user
+### Day58:
+**Today's Progress**: I've had massive problems with calc-sell aritmatic. when I removed safeMath to work with new versions of eth, something must have broken. My brain is going to explode with this
+
 TO DO IDEAS:
 Essentials for Later Development
 Persistent Data Storage:

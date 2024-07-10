@@ -18,8 +18,12 @@ const HomePage = () => {
   const [market, setMarket] = useState<Market | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
-  const [amount, setAmount] = useState<string>(''); // Amount input for buy/sell and liquidity
+  const [buyAmount, setBuyAmount] = useState<string>(''); // Amount input for buy
+  const [sellAmount, setSellAmount] = useState<string>(''); // Amount input for sell
+  const [addLiquidityAmount, setAddLiquidityAmount] = useState<string>(''); // Amount input for add liquidity
+  const [removeLiquidityAmount, setRemoveLiquidityAmount] = useState<string>(''); // Amount input for remove liquidity
   const [maxOutcomeTokensToSell, setMaxOutcomeTokensToSell] = useState<string>(''); // Max outcome tokens to sell input for sell
+
 
   useEffect(() => {
     const fetchMarket = async () => {
@@ -50,7 +54,7 @@ const HomePage = () => {
     try {
       const response = await axios.post('http://localhost:3001/api/buy-outcome', {
         outcomeIndex,
-        amount,
+        amount: buyAmount,
         minOutcomeTokensToBuy: 1 // Assuming minimum outcome tokens to buy is 0
       });
       console.log('Outcome shares bought:', response.data);
@@ -63,7 +67,7 @@ const HomePage = () => {
     try {
       const response = await axios.post('http://localhost:3001/api/sell-outcome', {
         outcomeIndex,
-        amount,
+        amount: sellAmount,
         maxOutcomeTokensToSell
       });
       console.log('Outcome shares sold:', response.data);
@@ -75,7 +79,7 @@ const HomePage = () => {
   const handleAddLiquidity = async () => {
     try {
       const response = await axios.post('http://localhost:3001/api/add-liquidity', {
-        amount,
+        amount: addLiquidityAmount,
       });
       console.log('Liquidity added:', response.data);
     } catch (error) {
@@ -86,7 +90,7 @@ const HomePage = () => {
   const handleRemoveLiquidity = async () => {
     try {
       const response = await axios.post('http://localhost:3001/api/remove-liquidity', {
-        amount,
+        amount: removeLiquidityAmount,
       });
       console.log('Liquidity removed:', response.data);
     } catch (error) {
@@ -109,8 +113,8 @@ const HomePage = () => {
             <h3>Buy Outcome Shares</h3>
             <input
               type="text"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              value={buyAmount}
+              onChange={(e) => setBuyAmount(e.target.value)}
               placeholder="Amount"
             />
             <button onClick={() => handleBuyOutcome(0)}>Buy Yes</button>
@@ -120,9 +124,15 @@ const HomePage = () => {
             <h3>Sell Outcome Shares</h3>
             <input
               type="text"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="Amount"
+              value={sellAmount}
+              onChange={(e) => setSellAmount(e.target.value)}
+              placeholder="Collateral Amount"
+            />
+            <input
+              type="text"
+              value={maxOutcomeTokensToSell}
+              onChange={(e) => setMaxOutcomeTokensToSell(e.target.value)}
+              placeholder="Max Outcome Tokens to Sell"
             />
             <button onClick={() => handleSellOutcome(0)}>Sell Yes</button>
             <button onClick={() => handleSellOutcome(1)}>Sell No</button>
@@ -132,8 +142,8 @@ const HomePage = () => {
             <h3>Add Liquidity</h3>
             <input
               type="text"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              value={addLiquidityAmount}
+              onChange={(e) => setAddLiquidityAmount(e.target.value)}
               placeholder="Amount"
             />
             <button onClick={handleAddLiquidity}>Add Liquidity</button>
@@ -143,8 +153,8 @@ const HomePage = () => {
             <h3>Remove Liquidity</h3>
             <input
               type="text"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              value={removeLiquidityAmount}
+              onChange={(e) => setRemoveLiquidityAmount(e.target.value)}
               placeholder="Amount"
             />
             <button onClick={handleRemoveLiquidity}>Remove Liquidity</button>
