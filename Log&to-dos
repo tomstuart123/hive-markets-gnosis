@@ -177,7 +177,13 @@ user then must be allowed to redeem multiple times to get back the erc-20 for th
 ### Day57:
 **Today's Progress**: updated state to store each input field individually so they aren't all updated onChange together. Also added a maxOutcomeTokenToSell input field for now. Still hate this UX for the user
 ### Day58:
-**Today's Progress**: I've had massive problems with calc-sell aritmatic. when I removed safeMath to work with new versions of eth, something must have broken. My brain is going to explode with this
+**Today's Progress**: Ive had massive problems with calc-sell aritmatic. when I removed safeMath to work with new versions of eth, something must have broken. My brain is going to explode with this
+### Day59-60:
+**Today's Progress**:decided to fork and move to gnosis chain and existing contracts
+### Day61:
+**Today's Progress**: set up my own local gnosis chain with ganache. new draft of script to interact with FPMMDeterministic.sol / conditionaltokens.sol on gnosis
+### Day62:
+**Today's Progress**: altered script to fit but hardhat still not compiling yet. I might just use their ABIs directly as working with these old solidty contracts (0.5.1) isnt fun
 
 TO DO IDEAS:
 Essentials for Later Development
