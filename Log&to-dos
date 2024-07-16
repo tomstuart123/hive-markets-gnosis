@@ -184,6 +184,8 @@ user then must be allowed to redeem multiple times to get back the erc-20 for th
 **Today's Progress**: set up my own local gnosis chain with ganache. new draft of script to interact with FPMMDeterministic.sol / conditionaltokens.sol on gnosis
 ### Day62:
 **Today's Progress**: altered script to fit but hardhat still not compiling yet. I might just use their ABIs directly as working with these old solidty contracts (0.5.1) isnt fun
+### Day62:
+**Today's Progress**: pulled the abis from @gnosis package in node modules. Altered by config.js to work with my local ganache gnosis chain. Still got an error with the target address...but hopefully close
 
 TO DO IDEAS:
 Essentials for Later Development

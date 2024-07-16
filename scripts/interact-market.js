@@ -10,10 +10,12 @@ const factoryAddress = process.env.FPMM_DETERMINISTIC_FACTORY_ADDRESS;
 const conditionalTokensAddress = process.env.CONDITIONAL_TOKENS_CONTRACT_ADDRESS;
 const tokenAddress = process.env.TOKEN_CONTRACT_ADDRESS;
 
-const FPMMDeterministicFactoryArtifact = require('../artifacts/contracts/FPMMDeterministicFactory.sol/FPMMDeterministicFactory.json');
-const FixedProductMarketMakerArtifact = require('../artifacts/contracts/FixedProductMarketMaker.sol/FixedProductMarketMaker.json');
-const ConditionalTokensArtifact = require('../artifacts/contracts/ConditionalTokens.sol/ConditionalTokens.json');
-const { abi: ERC20Abi } = require('@openzeppelin/contracts/build/contracts/IERC20.json');
+const FPMMDeterministicFactoryArtifact = require('@gnosis.pm/conditional-tokens-market-makers/build/contracts/FPMMDeterministicFactory.json');
+const FixedProductMarketMakerArtifact = require('@gnosis.pm/conditional-tokens-market-makers/build/contracts/FixedProductMarketMaker.json');
+const ConditionalTokensArtifact = require('@gnosis.pm/conditional-tokens-contracts/build/contracts/ConditionalTokens.json');
+const { abi: ERC20Abi } = require('@gnosis.pm/conditional-tokens-contracts/build/contracts/IERC20.json');
+// const { abi: ERC20Abi } = require('@openzeppelin/contracts/build/contracts/IERC20.json');
+
 
 const factory = new ethers.Contract(factoryAddress, FPMMDeterministicFactoryArtifact.abi, wallet);
 const conditionalTokens = new ethers.Contract(conditionalTokensAddress, ConditionalTokensArtifact.abi, wallet);

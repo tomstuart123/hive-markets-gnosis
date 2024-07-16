@@ -6,6 +6,18 @@ import * as dotenv from "dotenv";
 
 dotenv.config();
 
+
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
+const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
+
+if (!PRIVATE_KEY) {
+  throw new Error("Please set your PRIVATE_KEY in a .env file");
+}
+
+if (!ALCHEMY_API_KEY) {
+  throw new Error("Please set your ALCHEMY_API_KEY in a .env file");
+}
+
 const config: HardhatUserConfig = {
   solidity: {
     compilers: [
@@ -96,7 +108,11 @@ const config: HardhatUserConfig = {
         url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_API_KEY}`,
         blockNumber: 12345678 // Optional: specify a block number to fork from
       }
-    }
+    },
+    ganache: {
+      url: 'http://127.0.0.1:8545', // URL of your Ganache instance
+      accounts: [PRIVATE_KEY], // Ensure this is set in your .env file
+    },
   },
 };
 
