@@ -187,6 +187,9 @@ user then must be allowed to redeem multiple times to get back the erc-20 for th
 ### Day62:
 **Today's Progress**: pulled the abis from @gnosis package in node modules. Altered by config.js to work with my local ganache gnosis chain. Still got an error with the target address...but hopefully close
 
+### Day63:
+**Today's Progress**pulled the abis from @gnosis package in node modules. Altered by config.js to work with my local ganache gnosis chain. Still got an error with the target address...but hopefully close
+
 TO DO IDEAS:
 Essentials for Later Development
 Persistent Data Storage:

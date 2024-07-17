@@ -20,33 +20,16 @@ async function main() {
   const erc20TokenAddress = await erc20Token.getAddress();
   console.log("ERC20Token deployed to:", erc20TokenAddress);
 
-  // Deploy FixedProductMarketMakerFactory
-  const fixedProductMarketMakerFactory = await ethers.deployContract("FixedProductMarketMakerFactory");
-  const fixedProductMarketMakerFactoryAddress = await fixedProductMarketMakerFactory.getAddress();
-  console.log("FixedProductMarketMakerFactory deployed to:", fixedProductMarketMakerFactoryAddress);
-
-  // Deploy other contracts in the dependencies directory
-  const dependencies = [
-    "CTHelpers",
-    "CeilDiv",
-    "Whitelist",
-  ];
-
-  const deployedDependencies = {};
-
-  for (const contractName of dependencies) {
-    const contract = await ethers.deployContract(contractName);
-    const contractAddress = await contract.getAddress();
-    deployedDependencies[contractName] = contractAddress;
-    console.log(`${contractName} deployed to:`, contractAddress);
-  }
+  // Deploy FPMMDeterministicFactory
+  const FPMMDeterministicFactory = await ethers.deployContract("FPMMDeterministicFactory");
+  const fpmmDeterministicFactoryAddress = await FPMMDeterministicFactory.getAddress();
+  console.log("FPMMDeterministicFactory deployed to:", fpmmDeterministicFactoryAddress);
 
   // Save the contract addresses for server integration
   saveContractAddresses({
     ConditionalTokens: conditionalTokensAddress,
     ERC20Token: erc20TokenAddress,
-    FixedProductMarketMakerFactory: fixedProductMarketMakerFactoryAddress,
-    ...deployedDependencies,
+    FPMMDeterministicFactory: fpmmDeterministicFactoryAddress,
   });
 }
 
