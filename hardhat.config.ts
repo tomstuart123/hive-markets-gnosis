@@ -7,12 +7,12 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
+// const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
 
-if (!PRIVATE_KEY) {
-  throw new Error("Please set your PRIVATE_KEY in a .env file");
-}
+// if (!PRIVATE_KEY) {
+//   throw new Error("Please set your PRIVATE_KEY in a .env file");
+// }
 
 if (!ALCHEMY_API_KEY) {
   throw new Error("Please set your ALCHEMY_API_KEY in a .env file");
@@ -111,7 +111,10 @@ const config: HardhatUserConfig = {
     },
     ganache: {
       url: 'http://127.0.0.1:8545', // URL of your Ganache instance
-      accounts: [PRIVATE_KEY], // Ensure this is set in your .env file
+      // accounts: [PRIVATE_KEY],
+      accounts: {
+        mnemonic: process.env.GANACHE_MNEMONIC, // Use the mnemonic from your Ganache instance
+      },
     },
   },
 };

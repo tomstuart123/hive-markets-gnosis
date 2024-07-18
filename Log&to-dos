@@ -188,7 +188,10 @@ user then must be allowed to redeem multiple times to get back the erc-20 for th
 **Today's Progress**: pulled the abis from @gnosis package in node modules. Altered by config.js to work with my local ganache gnosis chain. Still got an error with the target address...but hopefully close
 
 ### Day63:
-**Today's Progress**pulled the abis from @gnosis package in node modules. Altered by config.js to work with my local ganache gnosis chain. Still got an error with the target address...but hopefully close
+**Today's Progress**okay, compiled now. I was importing @openzeppelin instead of 'openzeppelin-solidity'. Hate these 5 year old versions of contract packages but oh well. Edited my script to deploy the contracts to my local ganache instead of baseSepolia.
+
+### Day64:
+**Today's Progress** okay, deployed contracts on my local gnosischain via ganache. will try the test-script later today.
 
 TO DO IDEAS:
 Essentials for Later Development

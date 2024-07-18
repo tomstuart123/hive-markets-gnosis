@@ -16,7 +16,7 @@ async function main() {
   console.log("ConditionalTokens deployed to:", conditionalTokensAddress);
 
   // Deploy an ERC20 collateral token for testing (you may replace this with an actual deployed ERC20 token address)
-  const erc20Token = await ethers.deployContract("ERC20", ["Test Token", "TTK"]);
+  const erc20Token = await ethers.deployContract("ERC20");
   const erc20TokenAddress = await erc20Token.getAddress();
   console.log("ERC20Token deployed to:", erc20TokenAddress);
 
