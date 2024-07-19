@@ -3,18 +3,29 @@ require("dotenv").config();
 
 // Setup provider and wallet
 const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545'); // Local Ganache provider
-const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+const wallet = new ethers.Wallet(process.env.GANACHE_OPERATOR_ADDRESS_KEY, provider);
+
+console.log("Deploying contracts with the account:", wallet.address);
+
+
+// Load the contract addresses from the file created during deployment
+// const contractAddresses = JSON.parse(fs.readFileSync('../contracts/contract-addresses.json', 'utf8'));
+
 
 // Contract addresses and ABIs
 const factoryAddress = process.env.FPMM_DETERMINISTIC_FACTORY_ADDRESS;
 const conditionalTokensAddress = process.env.CONDITIONAL_TOKENS_CONTRACT_ADDRESS;
 const tokenAddress = process.env.TOKEN_CONTRACT_ADDRESS;
+// const factoryAddress = contractAddresses.FPMMDeterministicFactory;
+// const conditionalTokensAddress = contractAddresses.ConditionalTokens;
+// const tokenAddress =contractAddresses.ERC20Token;
 
 const FPMMDeterministicFactoryArtifact = require('@gnosis.pm/conditional-tokens-market-makers/build/contracts/FPMMDeterministicFactory.json');
 const FixedProductMarketMakerArtifact = require('@gnosis.pm/conditional-tokens-market-makers/build/contracts/FixedProductMarketMaker.json');
 const ConditionalTokensArtifact = require('@gnosis.pm/conditional-tokens-contracts/build/contracts/ConditionalTokens.json');
 const { abi: ERC20Abi } = require('@gnosis.pm/conditional-tokens-contracts/build/contracts/IERC20.json');
 // const { abi: ERC20Abi } = require('@openzeppelin/contracts/build/contracts/IERC20.json');
+
 
 
 const factory = new ethers.Contract(factoryAddress, FPMMDeterministicFactoryArtifact.abi, wallet);
@@ -60,11 +71,17 @@ const runTests = async () => {
     // Calculate the deterministic address
     const fixedProductMarketMakerAddress = ethers.getCreate2Address(
       factoryAddress,
-      ethers.solidityKeccak256(["uint256"], [saltNonce]),
+      ethers.solidityPackedKeccak256(["uint256"], [saltNonce]),
       ethers.keccak256(FPMMDeterministicFactoryArtifact.bytecode)
     );
 
     console.log("Calculated FixedProductMarketMaker address:", fixedProductMarketMakerAddress);
+    console.log('nonce',saltNonce);
+    console.log('conditionaladd',conditionalTokensAddress);
+    console.log('tokenadd',tokenAddress);
+    console.log('conditionid',conditionId);
+    console.log('fee',fee);
+    console.log('collateralAmount',collateralAmount);
 
     // Create Fixed Product Market Maker
     const createMarketTx = await factory.create2FixedProductMarketMaker(
@@ -76,7 +93,8 @@ const runTests = async () => {
       collateralAmount,
       []
     );
-    const createMarketReceipt = await createMarketTx.wait();
+    // const createMarketReceipt = await createMarketTx.wait();
+    console.log(createMarketTx)
     console.log("FixedProductMarketMaker created at:", fixedProductMarketMakerAddress);
 
     // create contract instance at this event
