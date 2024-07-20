@@ -192,8 +192,12 @@ user then must be allowed to redeem multiple times to get back the erc-20 for th
 
 ### Day64:
 **Today's Progress** okay, deployed contracts on my local gnosischain via ganache. will try the test-script later today.
+
 ### Day65:
-**Today's Progress** had to go back to the ddeploy contracts as hans't minted any tokens to myself for testing. Turns out ERC20.sol from this 5 year old version didnt have a public mint function but an extended contract of erc20mintable.sol. Crazy. Anyway, redeployed and my test script 1-creates the market but faces an issue in the add liquidity. Will pick up at the weekend
+**Today's Progress** had to go back to the deploy contracts as had not minted any tokens to myself for testing. Turns out ERC20.sol from this 5 year old version didnt have a public mint function but an extended contract of erc20mintable.sol. Crazy. Anyway, redeployed and my test script 1-creates the market but faces an issue in the add liquidity. Will pick up at the weekend
+
+### Day66:
+**Today's Progress**: nice my test script now works. I only skipped over one or two functions that didnt directly translate... but I can pick that up in my server testing. Will start that tomorrow
 
 TO DO IDEAS:
 Essentials for Later Development

@@ -5,9 +5,6 @@ require("dotenv").config();
 const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545'); // Local Ganache provider
 const wallet = new ethers.Wallet(process.env.GANACHE_OPERATOR_ADDRESS_KEY, provider);
 
-console.log("Deploying contracts with the account:", wallet.address);
-
-
 // Load the contract addresses from the file created during deployment
 // const contractAddresses = JSON.parse(fs.readFileSync('../contracts/contract-addresses.json', 'utf8'));
 
@@ -33,6 +30,7 @@ const conditionalTokens = new ethers.Contract(conditionalTokensAddress, Conditio
 const collateralToken = new ethers.Contract(tokenAddress, ERC20Abi, wallet);
 
 const runTests = async () => {
+  
   try {
     const description = "Test market description " + Date.now(); // Append timestamp for uniqueness
     const outcomeSlotCount = 2; // Example outcome slot count
@@ -53,7 +51,7 @@ const runTests = async () => {
     // Set variables
     const oracle = wallet.address;
     const fee = ethers.parseUnits("0.0001", 18);
-    const outcomeIndex = 0;
+    const outcomeIndex = 1;
 
     // Prepare condition
     const questionId = ethers.keccak256(ethers.toUtf8Bytes(description));
@@ -99,7 +97,7 @@ const runTests = async () => {
 
     // create contract instance at this event
     const fixedProductMarketMaker = new ethers.Contract(fixedProductMarketMakerAddress, FixedProductMarketMakerArtifact.abi, wallet);
-    
+    console.log(fixedProductMarketMaker)
     const approveTx2 = await collateralToken.approve(fixedProductMarketMakerAddress, approvedAmount);
     await approveTx2.wait();
     console.log("Collateral tokens approved for FixedProductMarketMaker:", approvedAmount);
@@ -107,9 +105,9 @@ const runTests = async () => {
     // Check token amounts
     const preLiquidity = await collateralToken.balanceOf(wallet.address);
     console.log("ERC-20 Balance Pre Liquidity:", ethers.formatUnits(preLiquidity, 18));
-    const positionIdPre = await fixedProductMarketMaker.positionIds(outcomeIndex);
-    const preLiquidityOutcomes = await conditionalTokens.balanceOf(wallet.address, positionIdPre);
-    console.log("Balance of ERC1155 outcome tokens before liquidity:", ethers.formatUnits(preLiquidityOutcomes, 18));
+    // const positionIdPre = await fixedProductMarketMaker.positionIds(outcomeIndex);
+    // const preLiquidityOutcomes = await conditionalTokens.balanceOf(wallet.address, positionIdPre);
+    // console.log("Balance of ERC1155 outcome tokens before liquidity:", ethers.formatUnits(preLiquidityOutcomes, 18));
 
     // Add liquidity
     const addLiquidityTx = await fixedProductMarketMaker.addFunding(collateralAmount, []);
@@ -119,11 +117,11 @@ const runTests = async () => {
     // Check token amounts
     const postLiquidity = await collateralToken.balanceOf(wallet.address);
     console.log("ERC-20 Balance After Liquidity but Pre Buy:", ethers.formatUnits(postLiquidity, 18));
-    const positionIdPost = await fixedProductMarketMaker.positionIds(outcomeIndex);
-    const postLiquidityOutcomes = await conditionalTokens.balanceOf(wallet.address, positionIdPost);
-    console.log("Balance of ERC1155 outcome tokens post liquidity:", ethers.formatUnits(postLiquidityOutcomes, 18));
-    const liquidityBalance = await fixedProductMarketMaker.balanceOf(wallet.address);
-    console.log("User's liquidity token balance post liquidity:", ethers.formatUnits(liquidityBalance, 18));
+    // const positionIdPost = await fixedProductMarketMaker.positionIds(outcomeIndex);
+    // const postLiquidityOutcomes = await conditionalTokens.balanceOf(wallet.address, positionIdPost);
+    // console.log("Balance of ERC1155 outcome tokens post liquidity:", ethers.formatUnits(postLiquidityOutcomes, 18));
+    // const liquidityBalance = await fixedProductMarketMaker.balanceOf(wallet.address);
+    // console.log("User's liquidity token balance post liquidity:", ethers.formatUnits(liquidityBalance, 18));
 
     // Buy outcome shares
     const buyOutcomeTx = await fixedProductMarketMaker.buy(buyErcAmount, outcomeIndex, 1);
@@ -133,31 +131,33 @@ const runTests = async () => {
     // Check token amounts
     const postBuy = await collateralToken.balanceOf(wallet.address);
     console.log("ERC-20 Balance After Buy:", ethers.formatUnits(postBuy, 18));
-    const positionIdPostBuy = await fixedProductMarketMaker.positionIds(outcomeIndex);
-    const postBuyOutcomes = await conditionalTokens.balanceOf(wallet.address, positionIdPostBuy);
-    console.log("Balance of ERC1155 outcome tokens post buy; pre sell:", ethers.formatUnits(postBuyOutcomes, 18));
-    const maxOutcomeTokensToSell = await fixedProductMarketMaker.calcSellAmount(sellErcAmount, outcomeIndex);
-    console.log('Max1155ToSell',ethers.formatUnits(maxOutcomeTokensToSell, 18))
+    // const positionIdPostBuy = await fixedProductMarketMaker.positionIds(outcomeIndex);
+    // const postBuyOutcomes = await conditionalTokens.balanceOf(wallet.address, positionIdPostBuy);
+    // console.log("Balance of ERC1155 outcome tokens post buy; pre sell:", ethers.formatUnits(postBuyOutcomes, 18));
+    
+    // const maxOutcomeTokensToSell = await fixedProductMarketMaker.calcSellAmount(sellErcAmount, outcomeIndex);
+    // console.log('it happened')
+    // console.log('Max1155ToSell',ethers.formatUnits(maxOutcomeTokensToSell, 18))
 
     // Fetch and display outcome prices
-    const getOutcomePrices = async () => {
-      const poolBalances = await fixedProductMarketMaker.getPoolBalances();
-      console.log("Pool Balances:", poolBalances);
+    // const getOutcomePrices = async () => {
+    //   const poolBalances = await fixedProductMarketMaker.getPoolBalances();
+    //   console.log("Pool Balances:", poolBalances);
     
-      // Ensure poolBalances is an array of BigInt
-      const totalBalance = poolBalances.reduce((acc, balance) => acc + BigInt(balance), 0n);
-      console.log("Total Balance:", totalBalance.toString());
+    //   // Ensure poolBalances is an array of BigInt
+    //   const totalBalance = poolBalances.reduce((acc, balance) => acc + BigInt(balance), 0n);
+    //   console.log("Total Balance:", totalBalance.toString());
     
-      // Calculate prices ensuring proper BigInt operations
-      const prices = poolBalances.map(balance => (BigInt(balance) * 10n ** 18n) / totalBalance);
-      return prices;
-    };
+    //   // Calculate prices ensuring proper BigInt operations
+    //   const prices = poolBalances.map(balance => (BigInt(balance) * 10n ** 18n) / totalBalance);
+    //   return prices;
+    // };
     
-    // Insert this call after buying outcome tokens
-    const outcomePrices = await getOutcomePrices();
-    outcomePrices.forEach((price, index) => {
-      console.log(`Price of outcome ${index}:`, (Number(price) / 10 ** 18).toFixed(18));
-    });
+    // // Insert this call after buying outcome tokens
+    // const outcomePrices = await getOutcomePrices();
+    // outcomePrices.forEach((price, index) => {
+    //   console.log(`Price of outcome ${index}:`, (Number(price) / 10 ** 18).toFixed(18));
+    // });
 
     // Approve the FixedProductMarketMaker to manage the ERC1155 tokens
     const approveERC1155Tx = await conditionalTokens.setApprovalForAll(fixedProductMarketMakerAddress, true);
@@ -167,8 +167,10 @@ const runTests = async () => {
     console.log("Is user approved for market contract:", isApproved);
 
     // Fetch and display collected fees
-    const collectedFees = await fixedProductMarketMaker.collectedFees();
-    console.log("Collected Fees:", ethers.formatUnits(collectedFees, 18));
+    // const collectedFees = await fixedProductMarketMaker.collectedFees();
+    // console.log("Collected Fees:", ethers.formatUnits(collectedFees, 18));
+
+    const maxOutcomeTokensToSell = ethers.parseUnits("2.1", 18);;
 
     // Sell outcome shares
     const sellOutcomeTx = await fixedProductMarketMaker.sell(sellErcAmount, outcomeIndex, maxOutcomeTokensToSell);
@@ -178,17 +180,17 @@ const runTests = async () => {
     // Check token amounts
     const postSell = await collateralToken.balanceOf(wallet.address);
     console.log("ERC-20 Balance After Selling:", ethers.formatUnits(postSell, 18));
-    const positionIdPostSell = await fixedProductMarketMaker.positionIds(outcomeIndex);
-    const postSellOutcomes = await conditionalTokens.balanceOf(wallet.address, positionIdPostSell);
-    console.log("Balance of ERC1155 outcome tokens post sell:", ethers.formatUnits(postSellOutcomes, 18));
+    // const positionIdPostSell = await fixedProductMarketMaker.positionIds(outcomeIndex);
+    // const postSellOutcomes = await conditionalTokens.balanceOf(wallet.address, positionIdPostSell);
+    // console.log("Balance of ERC1155 outcome tokens post sell:", ethers.formatUnits(postSellOutcomes, 18));
 
     // Fetch and display collected fees
-    const collectedFees2 = await fixedProductMarketMaker.collectedFees();
-    console.log("Collected Fees:", ethers.formatUnits(collectedFees2, 18));
+    // const collectedFees2 = await fixedProductMarketMaker.collectedFees();
+    // console.log("Collected Fees:", ethers.formatUnits(collectedFees2, 18));
 
     // Fetch and display withdrawable fees for the user
-    const withdrawableFees = await fixedProductMarketMaker.feesWithdrawableBy(wallet.address);
-    console.log("Withdrawable Fees for user:", ethers.formatUnits(withdrawableFees, 18));
+    // const withdrawableFees = await fixedProductMarketMaker.feesWithdrawableBy(wallet.address);
+    // console.log("Withdrawable Fees for user:", ethers.formatUnits(withdrawableFees, 18));
 
     // // Withdraw fees for the user
     // const withdrawFeesTx = await fixedProductMarketMaker.withdrawFees(wallet.address);
@@ -210,11 +212,11 @@ const runTests = async () => {
     // Check token amounts
     const postWithdrawLiquidity = await collateralToken.balanceOf(wallet.address);
     console.log("ERC-20 Balance After Withdraw Liquidity:", ethers.formatUnits(postWithdrawLiquidity, 18));
-    const positionIdPostWithrdaw = await fixedProductMarketMaker.positionIds(outcomeIndex);
-    const postDrawOutcomes = await conditionalTokens.balanceOf(wallet.address, positionIdPostWithrdaw);
-    console.log("Balance of ERC1155 outcome tokens post Withdraw Liquidity:", ethers.formatUnits(postDrawOutcomes, 18));
-    const liquidityBalancePost = await fixedProductMarketMaker.balanceOf(wallet.address);
-    console.log("User's liquidity token balance post liquidity:", ethers.formatUnits(liquidityBalancePost, 18));
+    // const positionIdPostWithrdaw = await fixedProductMarketMaker.positionIds(outcomeIndex);
+    // const postDrawOutcomes = await conditionalTokens.balanceOf(wallet.address, positionIdPostWithrdaw);
+    // // console.log("Balance of ERC1155 outcome tokens post Withdraw Liquidity:", ethers.formatUnits(postDrawOutcomes, 18));
+    // const liquidityBalancePost = await fixedProductMarketMaker.balanceOf(wallet.address);
+    // console.log("User's liquidity token balance post liquidity:", ethers.formatUnits(liquidityBalancePost, 18));
 
     // Redeem positions
     const redeemPositionsTx = await conditionalTokens.redeemPositions(
@@ -229,9 +231,9 @@ const runTests = async () => {
     // Check final balance of token amounts
     const finalBalance = await collateralToken.balanceOf(wallet.address);
     console.log("Final balance ERC-20s:", ethers.formatUnits(finalBalance, 18));
-    const positionIdFinal = await fixedProductMarketMaker.positionIds(outcomeIndex);
-    const finalOutcomesBalance = await conditionalTokens.balanceOf(wallet.address, positionIdFinal);
-    console.log("Final Balance of ERC1155 outcome tokens :", ethers.formatUnits(finalOutcomesBalance, 18));
+    // const positionIdFinal = await fixedProductMarketMaker.positionIds(outcomeIndex);
+    // const finalOutcomesBalance = await conditionalTokens.balanceOf(wallet.address, positionIdFinal);
+    // console.log("Final Balance of ERC1155 outcome tokens :", ethers.formatUnits(finalOutcomesBalance, 18));
   
   } catch (error) {
     console.error("Error running tests:", error);
