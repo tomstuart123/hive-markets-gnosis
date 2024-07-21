@@ -199,6 +199,9 @@ user then must be allowed to redeem multiple times to get back the erc-20 for th
 ### Day66:
 **Today's Progress**: nice my test script now works. I only skipped over one or two functions that didnt directly translate... but I can pick that up in my server testing. Will start that tomorrow
 
+### Day67:
+**Today's Progress**: Updated the code in my server to work with gnosis' - not my - contracts. Will test it for bugs with postman tomorrow
+
 TO DO IDEAS:
 Essentials for Later Development
 Persistent Data Storage:

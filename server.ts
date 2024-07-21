@@ -45,23 +45,24 @@ interface LiveMarket extends Submission {
 let liveMarket: LiveMarket | null = null;
 
 // Ethers.js setup
-const provider = new ethers.JsonRpcProvider(`https://base-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`);
-const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+// const provider = new ethers.JsonRpcProvider(`https://base-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`);
+// const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545'); // Local Ganache provider
+const wallet = new ethers.Wallet(process.env.GANACHE_OPERATOR_ADDRESS_KEY!, provider);
 const managedSigner = new NonceManager(wallet);  // Wrap the wallet with NonceManager
 
 // get contract abis
-const ERC20Artifact = require('./artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.json');
-const ConditionalTokensArtifact = require('./artifacts/contracts/ConditionalTokens.sol/ConditionalTokens.json');
-const FixedProductMarketMakerFactoryArtifact = require('./artifacts/contracts/FixedProductMarketMakerFactory.sol/FixedProductMarketMakerFactory.json');
+const ERC20Artifact = require('@gnosis.pm/conditional-tokens-contracts/build/contracts/IERC20.json');
+const ConditionalTokensArtifact = require('@gnosis.pm/conditional-tokens-contracts/build/contracts/ConditionalTokens.json');
+const FPMMDeterministicFactoryArtifact = require('@gnosis.pm/conditional-tokens-market-makers/build/contracts/FPMMDeterministicFactory.json');
+const FixedProductMarketMakerArtifact = require('@gnosis.pm/conditional-tokens-market-makers/build/contracts/FixedProductMarketMaker.json');
 const VotePowerArtifact = require('./artifacts/contracts/votepower.sol/VotePower.json'); // Import the JSON file
-const FixedProductMarketMakerArtifact = require('./artifacts/contracts/FixedProductMarketMaker.sol/FixedProductMarketMaker.json');
-const CTHelpersArtifact = require('./artifacts/contracts/dependencies/CTHelpers.sol/CTHelpers.json');
 
 
 const collateralToken = new ethers.Contract(process.env.TOKEN_CONTRACT_ADDRESS!, ERC20Artifact.abi, managedSigner);
 const factory = new ethers.Contract(
-  process.env.FIXED_PRODUCT_MARKET_MAKER_FACTORY_ADDRESS!,
-  FixedProductMarketMakerFactoryArtifact.abi,
+  process.env.FPMM_DETERMINISTIC_FACTORY_ADDRESS!,
+  FPMMDeterministicFactoryArtifact.abi,
   managedSigner
 );
 const conditionalTokens = new ethers.Contract(
@@ -73,12 +74,6 @@ const conditionalTokens = new ethers.Contract(
 const votePowerContract = new ethers.Contract(
   process.env.VOTE_POWER_CONTRACT_ADDRESS!,
   VotePowerArtifact.abi,
-  managedSigner
-);
-
-const CTHelpers = new ethers.Contract(
-  process.env.CT_HELPERS_CONTRACT_ADDRESS!,
-  CTHelpersArtifact.abi,
   managedSigner
 );
 
@@ -302,30 +297,51 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
     console.log('Conditional Tokens Address:', conditionalTokens.target);
     console.log('Collateral Token Address:', collateralToken.target);
 
+    // Generate the salt
+    const saltNonce = Math.floor(Math.random() * 10000);
+
     const fee = ethers.parseUnits("0.0001", 18); // Example fee update
-    const createMarketTx = await factory.createFixedProductMarketMaker(
+    // const createMarketTx = await factory.createFixedProductMarketMaker(
+    //   conditionalTokens.target,
+    //   collateralToken.target,
+    //   [conditionId],
+    //   fee
+    // );
+    // const createMarketReceipt = await createMarketTx.wait();
+
+    const fixedProductMarketMakerAddress = ethers.getCreate2Address(
+      process.env.FPMM_DETERMINISTIC_FACTORY_ADDRESS!,
+      ethers.solidityPackedKeccak256(["uint256"], [saltNonce]),
+      ethers.keccak256(FPMMDeterministicFactoryArtifact.bytecode)
+    );
+
+    const createMarketTx = await factory.create2FixedProductMarketMaker(
+      saltNonce,
       conditionalTokens.target,
       collateralToken.target,
       [conditionId],
-      fee
+      fee,
+      // hard code this for now
+      ethers.parseUnits("2", 18),
+      []
     );
-    const createMarketReceipt = await createMarketTx.wait();
+    console.log(createMarketTx)
 
-    const iface = new ethers.Interface(FixedProductMarketMakerFactoryArtifact.abi);
-    const parsedLogs = createMarketReceipt.logs
-      .map((log: ethers.Log) => {
-        try {
-          return iface.parseLog(log);
-        } catch (e) {
-          return null;
-        }
-      })
-      .filter((log: ethers.LogDescription | null): log is ethers.LogDescription => log !== null && log.name === 'FixedProductMarketMakerCreation');
+    // const iface = new ethers.Interface(FixedProductMarketMakerFactoryArtifact.abi);
+    // const parsedLogs = createMarketReceipt.logs
+    //   .map((log: ethers.Log) => {
+    //     try {
+    //       return iface.parseLog(log);
+    //     } catch (e) {
+    //       return null;
+    //     }
+    //   })
+    //   .filter((log: ethers.LogDescription | null): log is ethers.LogDescription => log !== null && log.name === 'FixedProductMarketMakerCreation');
 
-    if (parsedLogs.length === 0) {
-      return res.status(500).json({ message: 'FixedProductMarketMakerCreation event not found' });
-    }
-    const fixedProductMarketMakerAddress = parsedLogs[0].args.fixedProductMarketMaker;
+    // if (parsedLogs.length === 0) {
+    //   return res.status(500).json({ message: 'FixedProductMarketMakerCreation event not found' });
+    // }
+    // const fixedProductMarketMakerAddress = parsedLogs[0].args.fixedProductMarketMaker;
     console.log('FixedProductMarketMaker Address:', fixedProductMarketMakerAddress);
     newLiveMarket.marketAddress = fixedProductMarketMakerAddress;
 
