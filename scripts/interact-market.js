@@ -235,7 +235,7 @@ const runTests = async () => {
     // const finalOutcomesBalance = await conditionalTokens.balanceOf(wallet.address, positionIdFinal);
     // console.log("Final Balance of ERC1155 outcome tokens :", ethers.formatUnits(finalOutcomesBalance, 18));
   
-  } catch (error) {
+  } catch (error) { 
     console.error("Error running tests:", error);
   }
 };

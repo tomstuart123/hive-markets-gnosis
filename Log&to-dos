@@ -200,7 +200,13 @@ user then must be allowed to redeem multiple times to get back the erc-20 for th
 **Today's Progress**: nice my test script now works. I only skipped over one or two functions that didnt directly translate... but I can pick that up in my server testing. Will start that tomorrow
 
 ### Day67:
-**Today's Progress**: Updated the code in my server to work with gnosis' - not my - contracts. Will test it for bugs with postman tomorrow
+**Today's Progress**: Updated the code in my server to work with gnosis - not my - contracts. Will test it for bugs with postman tomorrow
+
+### Day68:
+**Today's Progress**:hitting nonce issues in my server. Don't think thats the real issue. An error is causing the misalignment but the nonce issues make it hard to replicate. Will come back at it tomorrow
+
+### Day69:
+**Today's Progress**:
 
 TO DO IDEAS:
 Essentials for Later Development

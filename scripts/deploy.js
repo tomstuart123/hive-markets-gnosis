@@ -19,6 +19,13 @@ async function main() {
   const erc20Token = await ethers.deployContract("ERC20Mintable");
   const erc20TokenAddress = await erc20Token.getAddress();
   console.log("ERC20Token deployed to:", erc20TokenAddress);
+ 
+  console.log("Deploying VotePower contract...");
+  const votePower = await ethers.deployContract("VotePower", [erc20TokenAddress]);
+   // await votePower.deployed();
+    // ethers6 updated way
+    // await votePower.waitForDeployment();
+    console.log("VotePower contract deployed to:", votePower.target);
 
   // mint some tokens to my wallets
    const mintAmount = ethers.parseUnits("10000", 18); // Mint 1000 tokens
@@ -30,10 +37,15 @@ async function main() {
    const tokenBalance = await erc20Token.balanceOf(deployer.address);
    console.log("ERC20 token balance:", ethers.formatUnits(tokenBalance, 18));
  
+// Deploy FPMMDeterministicFactory
+const FPMMDeterministicFactory = await ethers.deployContract("FPMMDeterministicFactory");
+const fpmmDeterministicFactoryAddress = await FPMMDeterministicFactory.getAddress();
+console.log("FPMMDeterministicFactory deployed to:", fpmmDeterministicFactoryAddress);  
+
   // Fund the trader accounts with ERC20 tokens
-  const traders = [process.env.GANACHE_TRADER_1, process.env.GANACHE_TRADER_2];
+  const traders = [process.env.GANACHE_TRADER_1, process.env.GANACHE_TRADER_2, fpmmDeterministicFactoryAddress];
   for (const trader of traders) {
-    const transferAmount = ethers.parseUnits("3000", 18); // Transfer 3000 tokens to each trader
+    const transferAmount = ethers.parseUnits("2000", 18); // Transfer 3000 tokens to each trader
     const transferTx = await erc20Token.transfer(trader, transferAmount); // Transfer 3333 tokens to each trader
     await transferTx.wait();
     const traderBalance = await erc20Token.balanceOf(trader);
@@ -43,11 +55,6 @@ async function main() {
   const tokenBalance2 = await erc20Token.balanceOf(deployer.address);
    console.log("ERC20 token balance:", ethers.formatUnits(tokenBalance2, 18));
 
-
-  // Deploy FPMMDeterministicFactory
-  const FPMMDeterministicFactory = await ethers.deployContract("FPMMDeterministicFactory");
-  const fpmmDeterministicFactoryAddress = await FPMMDeterministicFactory.getAddress();
-  console.log("FPMMDeterministicFactory deployed to:", fpmmDeterministicFactoryAddress);
 
   // Save the contract addresses for server integration
   saveContractAddresses({
