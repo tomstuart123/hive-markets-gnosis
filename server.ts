@@ -598,13 +598,27 @@ app.post('/api/sell-outcome', async (req: Request, res: Response) => {
     const amountParsed = ethers.parseUnits(amount, 18);
     const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
 
-    // Fetch user's balance for the specific outcome token
-    const positionId = await fixedProductMarketMaker.positionIds(0);
+    // // Fetch user's balance for the specific outcome token
+    // const positionId = await fixedProductMarketMaker.positionIds(0);
+    // const userBalance = await conditionalTokens.balanceOf(wallet.address, positionId);
+    // // console.log('userOutcometokens to sell', userBalance)
+    // if (BigInt(userBalance) === BigInt(0)) {
+    //   return res.status(400).json({ message: 'You do not have any tokens to sell.' });
+    // }
+
+    // Calculate the collectionId
+    const conditionId = await conditionalTokens.getConditionId(wallet.address, liveMarket.questionId, 2);
+    const indexSet = 1 << outcomeIndex; // Calculate the index set for the outcome index
+    const collectionId = await conditionalTokens.getCollectionId(ethers.ZeroHash, conditionId, indexSet);
+    // Calculate the positionId
+    const positionId = await conditionalTokens.getPositionId(collateralToken.target, collectionId);
+
     const userBalance = await conditionalTokens.balanceOf(wallet.address, positionId);
-    // console.log('userOutcometokens to sell', userBalance)
-    if (BigInt(userBalance) === BigInt(0)) {
-      return res.status(400).json({ message: 'You do not have any tokens to sell.' });
-    }
+    // if (BigInt(userBalance) === BigInt(0)) {
+    //   return res.status(400).json({ message: 'You do not have any tokens to sell.' });
+    // }
+
+    console.log('my balance', userBalance.toString());
 
     const approveERC1155Tx = await conditionalTokens.setApprovalForAll(liveMarket.marketAddress, true);
     await approveERC1155Tx.wait();
@@ -616,7 +630,7 @@ app.post('/api/sell-outcome', async (req: Request, res: Response) => {
     await sellOutcomeTx.wait();
     console.log("Outcome shares sold:", sellOutcomeTx.hash);
 
-    res.status(200).json({ message: 'Outcome shares sold', txHash: sellOutcomeTx.hash });
+    res.status(200).json({ message: 'Outcome shares sold', sellOutcomeTx });
   } catch (error) {
     console.error('Error selling outcome shares:', error);
 

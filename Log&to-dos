@@ -206,7 +206,10 @@ user then must be allowed to redeem multiple times to get back the erc-20 for th
 **Today's Progress**:hitting nonce issues in my server. Don't think thats the real issue. An error is causing the misalignment but the nonce issues make it hard to replicate. Will come back at it tomorrow
 
 ### Day69:
-**Today's Progress**:
+**Today's Progress**: dumb. my old contracts hadnt provided initial liquidity so there was no need for the factory to be approved for token spend. For the old FPMM contracts of gnosis it is required. Solved now. The server can run all endpoints end to end EXCEPT, those related to selling. big test starts tomorrow; lets see if I still get the math issues when selling when I dont alter the OG contracts of gnosis
+
+### Day70:
+**Today's Progress**: so the math on sell does seem to be working better. however, I'm struggling to track the token amounts on buy and sell. need another morning on this. Good signs though that using the OG contracts of gnosis was a good call
 
 TO DO IDEAS:
 Essentials for Later Development
