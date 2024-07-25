@@ -17,12 +17,16 @@ const tokenAddress = process.env.TOKEN_CONTRACT_ADDRESS;
 // const conditionalTokensAddress = contractAddresses.ConditionalTokens;
 // const tokenAddress =contractAddresses.ERC20Token;
 
-const FPMMDeterministicFactoryArtifact = require('@gnosis.pm/conditional-tokens-market-makers/build/contracts/FPMMDeterministicFactory.json');
-const FixedProductMarketMakerArtifact = require('@gnosis.pm/conditional-tokens-market-makers/build/contracts/FixedProductMarketMaker.json');
-const ConditionalTokensArtifact = require('@gnosis.pm/conditional-tokens-contracts/build/contracts/ConditionalTokens.json');
-const { abi: ERC20Abi } = require('@gnosis.pm/conditional-tokens-contracts/build/contracts/IERC20.json');
+// const FPMMDeterministicFactoryArtifact = require('@gnosis.pm/conditional-tokens-market-makers/build/contracts/FPMMDeterministicFactory.json');
+// const FixedProductMarketMakerArtifact = require('@gnosis.pm/conditional-tokens-market-makers/build/contracts/FixedProductMarketMaker.json');
+// const ConditionalTokensArtifact = require('@gnosis.pm/conditional-tokens-contracts/build/contracts/ConditionalTokens.json');
+// const { abi: ERC20Abi } = require('@gnosis.pm/conditional-tokens-contracts/build/contracts/IERC20.json');
 // const { abi: ERC20Abi } = require('@openzeppelin/contracts/build/contracts/IERC20.json');
 
+const FPMMDeterministicFactoryArtifact = require('../artifacts/contracts/FPMMDeterministicFactory.sol/FPMMDeterministicFactory.json');
+const FixedProductMarketMakerArtifact = require('../artifacts/@gnosis.pm/conditional-tokens-market-makers/contracts/FixedProductMarketMaker.sol/FixedProductMarketMaker.json');
+const ConditionalTokensArtifact = require('../artifacts/@gnosis.pm/conditional-tokens-contracts/contracts/ConditionalTokens.sol/ConditionalTokens.json');
+const { abi: ERC20Abi } = require('../artifacts/openzeppelin-solidity/contracts/token/ERC20/IERC20.sol/IERC20.json');
 
 
 const factory = new ethers.Contract(factoryAddress, FPMMDeterministicFactoryArtifact.abi, wallet);
@@ -36,7 +40,7 @@ const runTests = async () => {
     const outcomeSlotCount = 2; // Example outcome slot count
     let collateralAmount = ethers.parseUnits("2", 18); // Example collateral amount
     let buyErcAmount = ethers.parseUnits("2.2", 18); // Example trade amount
-    let sellErcAmount = ethers.parseUnits("0.1", 18); // Example trade amount
+    let sellErcAmount = ethers.parseUnits("1", 18); // Example trade amount
     let approvedAmount = ethers.parseUnits("100", 18); // Example approved amount
 
     // Log initial balance
@@ -95,6 +99,7 @@ const runTests = async () => {
     console.log(createMarketTx)
     console.log("FixedProductMarketMaker created at:", fixedProductMarketMakerAddress);
 
+
     // create contract instance at this event
     const fixedProductMarketMaker = new ethers.Contract(fixedProductMarketMakerAddress, FixedProductMarketMakerArtifact.abi, wallet);
     console.log(fixedProductMarketMaker)
@@ -102,12 +107,21 @@ const runTests = async () => {
     await approveTx2.wait();
     console.log("Collateral tokens approved for FixedProductMarketMaker:", approvedAmount);
 
+    const approveTx3 = await collateralToken.approve(wallet.address, approvedAmount);
+    await approveTx3.wait();
+    console.log("Collateral tokens approved for user:", approvedAmount);
+
     // Check token amounts
     const preLiquidity = await collateralToken.balanceOf(wallet.address);
     console.log("ERC-20 Balance Pre Liquidity:", ethers.formatUnits(preLiquidity, 18));
+    
     // const positionIdPre = await fixedProductMarketMaker.positionIds(outcomeIndex);
     // const preLiquidityOutcomes = await conditionalTokens.balanceOf(wallet.address, positionIdPre);
     // console.log("Balance of ERC1155 outcome tokens before liquidity:", ethers.formatUnits(preLiquidityOutcomes, 18));
+
+      // Call the collectedFees function and log the result
+const collectedFees = await fixedProductMarketMaker.collectedFees();
+console.log("Collected Fees:", ethers.formatUnits(collectedFees, 18));
 
     // Add liquidity
     const addLiquidityTx = await fixedProductMarketMaker.addFunding(collateralAmount, []);

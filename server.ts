@@ -389,21 +389,41 @@ app.post('/api/add-liquidity', async (req: Request, res: Response) => {
 
   try {
     const amountParsed = ethers.parseUnits(amount, 18);
-    const approveTx = await collateralToken.approve(liveMarket.marketAddress, amountParsed);
-    await approveTx.wait();
-    console.log("Collateral tokens approved for adding liquidity:", approveTx.hash);
 
+    // Log initial balance
+    const initialBalance = await collateralToken.balanceOf(wallet.address);
+    console.log("User ERC-20 Balance Before approval:", ethers.formatUnits(initialBalance, 18));
+
+    // Approve tokens
+    const approveTx = await collateralToken.approve(liveMarket.marketAddress, amountParsed);
+    const approveReceipt = await approveTx.wait();
+    console.log("Collateral tokens approved for adding liquidity:", approveReceipt.hash);
+
+    // Log balance after approval
+    const balanceAfterApproval = await collateralToken.balanceOf(wallet.address);
+    console.log("User ERC-20 Balance After approval:", ethers.formatUnits(balanceAfterApproval, 18));
+
+    // Fetch user's balance before adding liquidity
+    const userCollateralBefore = await collateralToken.balanceOf(wallet.address);
+    console.log("User ERC-20 Balance Before adding liquidity:", ethers.formatUnits(userCollateralBefore, 18));
+
+    // Add liquidity
     const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
     const addLiquidityTx = await fixedProductMarketMaker.addFunding(amountParsed, []);
-    await addLiquidityTx.wait();
-    console.log("Liquidity added:", addLiquidityTx.hash);
+    const addLiquidityReceipt = await addLiquidityTx.wait();
+    console.log("Liquidity added:", addLiquidityReceipt.hash);
 
-    res.status(200).json({ message: 'Liquidity added', txHash: addLiquidityTx.hash });
+    // Fetch user's balance after adding liquidity
+    const userCollateralAfter = await collateralToken.balanceOf(wallet.address);
+    console.log("User ERC-20 Balance After adding liquidity:", ethers.formatUnits(userCollateralAfter, 18));
+
+    res.status(200).json({ message: 'Liquidity added', txHash: addLiquidityReceipt.transactionHash });
   } catch (error) {
     console.error('Error adding liquidity:', error);
     res.status(500).json({ message: 'Error adding liquidity', error });
   }
 });
+
 
 app.post('/api/remove-liquidity', async (req: Request, res: Response) => {
   const { amount } = req.body;
@@ -436,6 +456,8 @@ app.post('/api/buy-outcome', async (req: Request, res: Response) => {
   if (!liveMarket || !liveMarket.marketAddress) {
     return res.status(400).json({ message: 'No live market available' });
   }
+
+
   try {
     const amountParsed = ethers.parseUnits(amount, 18);
     const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
@@ -444,9 +466,29 @@ app.post('/api/buy-outcome', async (req: Request, res: Response) => {
     await approveTx.wait();
     console.log("Collateral tokens approved for buying outcome:", approveTx.hash);
 
+    const userCollateral = await collateralToken.balanceOf(wallet.address);
+     console.log("User ERC-20 Balance Before buy:", ethers.formatUnits(userCollateral, 18));
+
     const buyOutcomeTx = await fixedProductMarketMaker.buy(amountParsed, outcomeIndex, minOutcomeTokensToBuy);
     await buyOutcomeTx.wait();
     console.log("Outcome shares bought:", buyOutcomeTx.hash);
+
+     console.log("User ERC-20 Balance Before buy:", ethers.formatUnits(userCollateral, 18));
+
+      // Calculate outcome token owned
+    const conditionId = await conditionalTokens.getConditionId(wallet.address, liveMarket.questionId, 2);
+    console.log('conditionId',conditionId)
+    const indexSet = 1 << outcomeIndex; // Calculate the index set for the outcome index
+    console.log('indexSet',indexSet)
+    console.log('ethers.ZeroHash',ethers.ZeroHash)
+    const collectionId = await conditionalTokens.getCollectionId(ethers.ZeroHash, conditionId, indexSet);
+    console.log('collectionId',collectionId)
+    console.log('collateralToken.target',collateralToken.target)
+    const positionId = await conditionalTokens.getPositionId(collateralToken.target, collectionId);
+    console.log('positionId',positionId )
+    console.log('wallet',wallet.address)
+    const userBalance = await conditionalTokens.balanceOf(wallet.address, positionId);
+    console.log("Collateral tokens owned after buying outcome:", userBalance);
 
     res.status(200).json({ message: 'Outcome shares bought', txHash: buyOutcomeTx.hash });
   } catch (error) {
@@ -474,7 +516,10 @@ app.post('/api/calc-sell-amount', async (req: Request, res: Response) => {
     const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
 
      // Fetch user's balance for the specific outcome token
-     const positionId = await fixedProductMarketMaker.positionIds(0);
+     const conditionId = await conditionalTokens.getConditionId(wallet.address, liveMarket.questionId, 2);
+     const indexSet = 1 << 0; 
+     const collectionId = await conditionalTokens.getCollectionId(ethers.ZeroHash, conditionId, indexSet);
+     const positionId = await conditionalTokens.getPositionId(collateralToken.target, collectionId);
      const userBalance = await conditionalTokens.balanceOf(wallet.address, positionId);
      console.log('userOutcometokens to sell', userBalance)
      if (BigInt(userBalance) === BigInt(0)) {
@@ -598,21 +643,11 @@ app.post('/api/sell-outcome', async (req: Request, res: Response) => {
     const amountParsed = ethers.parseUnits(amount, 18);
     const fixedProductMarketMaker = new ethers.Contract(liveMarket.marketAddress, FixedProductMarketMakerArtifact.abi, managedSigner);
 
-    // // Fetch user's balance for the specific outcome token
-    // const positionId = await fixedProductMarketMaker.positionIds(0);
-    // const userBalance = await conditionalTokens.balanceOf(wallet.address, positionId);
-    // // console.log('userOutcometokens to sell', userBalance)
-    // if (BigInt(userBalance) === BigInt(0)) {
-    //   return res.status(400).json({ message: 'You do not have any tokens to sell.' });
-    // }
-
-    // Calculate the collectionId
+    // Calculate outcome token owned
     const conditionId = await conditionalTokens.getConditionId(wallet.address, liveMarket.questionId, 2);
     const indexSet = 1 << outcomeIndex; // Calculate the index set for the outcome index
     const collectionId = await conditionalTokens.getCollectionId(ethers.ZeroHash, conditionId, indexSet);
-    // Calculate the positionId
     const positionId = await conditionalTokens.getPositionId(collateralToken.target, collectionId);
-
     const userBalance = await conditionalTokens.balanceOf(wallet.address, positionId);
     // if (BigInt(userBalance) === BigInt(0)) {
     //   return res.status(400).json({ message: 'You do not have any tokens to sell.' });
@@ -675,16 +710,17 @@ app.post('/api/resolve-condition', async (req: Request, res: Response) => {
     }
 
     // Check tokens
-
     // const poolBalancesBefore = await fixedProductMarketMaker.getPoolBalances();
     // console.log('Market Pool Balances Before resolution:', poolBalancesBefore);
     const collateralBalanceBefore = await collateralToken.balanceOf(liveMarket.marketAddress);
     console.log('Market Collateral Balance Before resolution:', ethers.formatUnits(collateralBalanceBefore, 18));
     const userCollateral = await collateralToken.balanceOf(wallet.address);
      console.log("User ERC-20 Balance Before resolution:", ethers.formatUnits(userCollateral, 18));
-    //  const positionId = await fixedProductMarketMaker.positionIds(0);
-    //  const userOutcomeTokens = await conditionalTokens.balanceOf(wallet.address, positionId);
-    //  console.log("User Balance of ERC1155 outcome tokens Before resolution:", ethers.formatUnits(userOutcomeTokens, 18));
+      const indexSet = 1 << 0;
+      const collectionId = await conditionalTokens.getCollectionId(ethers.ZeroHash, conditionId, indexSet);
+      const positionId = await conditionalTokens.getPositionId(collateralToken.target, collectionId);
+     const userOutcomeTokens = await conditionalTokens.balanceOf(wallet.address, positionId);
+     console.log("User Balance of ERC1155 outcome tokens Before resolution:", ethers.formatUnits(userOutcomeTokens, 18));
     // const preLiquidityInMarket = await fixedProductMarketMaker.balanceOf(liveMarket.marketAddress);
     // console.log("Market's liquidity token balance pre resolution:", ethers.formatUnits(preLiquidityInMarket, 18)); 
     // const preLiquidityBalance = await fixedProductMarketMaker.balanceOf(wallet.address);
@@ -716,9 +752,8 @@ app.post('/api/resolve-condition', async (req: Request, res: Response) => {
     console.log('Market Collateral Balance after resolution::', ethers.formatUnits(collateralBalanceAfter, 18));
      const userCollateralAfter = await collateralToken.balanceOf(wallet.address);
      console.log("User ERC-20 Balance after resolution::", ethers.formatUnits(userCollateralAfter, 18));
-    //  const positionIdAfter = await fixedProductMarketMaker.positionIds(0);
-    //  const userOutcomeTokensAfter = await conditionalTokens.balanceOf(wallet.address, positionIdAfter);
-    //  console.log("User Balance of ERC1155 outcome tokens after resolution::", ethers.formatUnits(userOutcomeTokensAfter, 18));
+     const userOutcomeTokensAfter = await conditionalTokens.balanceOf(wallet.address, positionId);
+     console.log("User Balance of ERC1155 outcome tokens after resolution::", ethers.formatUnits(userOutcomeTokensAfter, 18));
     //  const postLiquidityBalance = await fixedProductMarketMaker.balanceOf(wallet.address);
     //  console.log("User's liquidity token balance post resolution:", ethers.formatUnits(postLiquidityBalance, 18));
     //  const postLiquidityInMarket = await fixedProductMarketMaker.balanceOf(wallet.address);
@@ -760,9 +795,11 @@ app.post('/api/redeem-positions', async (req: Request, res: Response) => {
     console.log('Market Collateral Balance Before Redemption:', ethers.formatUnits(collateralBalanceBefore, 18));
      const userCollateral = await collateralToken.balanceOf(wallet.address);
      console.log("User ERC-20 Balance Before Redemption:", ethers.formatUnits(userCollateral, 18));
-    //  const positionId = await fixedProductMarketMaker.positionIds(0);
-    //  const userOutcomeTokens = await conditionalTokens.balanceOf(wallet.address, positionId);
-    //  console.log("User Balance of ERC1155 outcome tokens Before Redemption:", ethers.formatUnits(userOutcomeTokens, 18));
+     const indexSet = 1 << 0; 
+     const collectionId = await conditionalTokens.getCollectionId(ethers.ZeroHash, conditionId, indexSet);
+     const positionId = await conditionalTokens.getPositionId(collateralToken.target, collectionId);
+     const userOutcomeTokens = await conditionalTokens.balanceOf(wallet.address, positionId);
+     console.log("User Balance of ERC1155 outcome tokens Before Redemption:", ethers.formatUnits(userOutcomeTokens, 18));
     //  const preLiquidityBalance = await fixedProductMarketMaker.balanceOf(wallet.address);
     //  console.log("User's liquidity token balance post resolution:", ethers.formatUnits(preLiquidityBalance, 18));
     //  const preLiquidityInMarket = await fixedProductMarketMaker.balanceOf(wallet.address);
@@ -802,9 +839,8 @@ app.post('/api/redeem-positions', async (req: Request, res: Response) => {
      console.log('Market Collateral Balance after Redemption:', ethers.formatUnits(collateralBalanceAfter, 18));
       const userCollateralAfter = await collateralToken.balanceOf(wallet.address);
       console.log("User ERC-20 Balance after Redemption:", ethers.formatUnits(userCollateralAfter, 18));
-      // const positionIdAfter = await fixedProductMarketMaker.positionIds(0);
-      // const userOutcomeTokensAfter = await conditionalTokens.balanceOf(wallet.address, positionIdAfter);
-      // console.log("User Balance of ERC1155 outcome tokens after Redemption:", ethers.formatUnits(userOutcomeTokensAfter, 18));
+      const userOutcomeTokensAfter = await conditionalTokens.balanceOf(wallet.address, positionId);
+      console.log("User Balance of ERC1155 outcome tokens after Redemption:", ethers.formatUnits(userOutcomeTokensAfter, 18));
       // const postLiquidityBalance = await fixedProductMarketMaker.balanceOf(wallet.address);
       // console.log("User's liquidity token balance post resolution:", ethers.formatUnits(postLiquidityBalance, 18));
       // const postLiquidityInMarket = await fixedProductMarketMaker.balanceOf(wallet.address);
