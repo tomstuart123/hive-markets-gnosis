@@ -49,7 +49,7 @@ console.log("FPMMDeterministicFactory deployed to:", fpmmDeterministicFactoryAdd
     const transferTx = await erc20Token.transfer(trader, transferAmount); // Transfer 3333 tokens to each trader
     await transferTx.wait();
     const traderBalance = await erc20Token.balanceOf(trader);
-    console.log(`Funded trader ${trader} with ERC20 tokens. Balance: ${ethers.formatUnits(traderBalance, 18)}`);
+    console.log(`Funded trader ${trader} with ERC20 tokens. Balance: ${ethers.formatUnits(traderBalance, 18)} at ${transferTx}`);
   }
 
   const tokenBalance2 = await erc20Token.balanceOf(deployer.address);

@@ -150,9 +150,6 @@ const runTests = async () => {
     const isApproved = await conditionalTokens.isApprovedForAll(wallet.address, fixedProductMarketMakerAddress);
     console.log("Is user approved for market contract:", isApproved);
 
-     // Fetch and display collected fees
-     const collectedFees = await fixedProductMarketMaker.collectedFees();
-     console.log("Collected Fees:", ethers.formatUnits(collectedFees, 18));
 
     // Sell outcome shares
     const sellOutcomeTx = await fixedProductMarketMaker.sell(sellErcAmount, outcomeIndex, maxOutcomeTokensToSell);

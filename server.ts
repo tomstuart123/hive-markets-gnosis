@@ -312,7 +312,7 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
 // const fee = ethers.parseUnits("0", 18); // Example fee update
 
     console.log('pre find address');
-    const fixedProductMarketMakerAddress = ethers.getCreate2Address(
+    const fixedProductMarketMakerAddressCalc = ethers.getCreate2Address(
       process.env.FPMM_DETERMINISTIC_FACTORY_ADDRESS!,
       ethers.solidityPackedKeccak256(["uint256"], [saltNonce]),
       ethers.keccak256(FPMMDeterministicFactoryArtifact.bytecode)
@@ -340,8 +340,27 @@ app.post('/api/set-live-market', async (req: Request, res: Response) => {
       []
     );
     console.log(createMarketTx.hash)
-  
+    const createMarketReceipt = await createMarketTx.wait();
+    console.log(createMarketTx)
+    
+    // Parse the logs to find the FixedProductMarketMakerCreation event
+    const iface = new ethers.Interface(FPMMDeterministicFactoryArtifact.abi);
+    const parsedLogs = createMarketReceipt.logs
+      .map((log: ethers.Log) => {
+        try {
+          return iface.parseLog(log);
+        } catch (e) {
+          return null;
+        }
+      })
+      .filter((log: ethers.LogDescription | null): log is ethers.LogDescription => log !== null && log.name === 'FixedProductMarketMakerCreation');
+
+    if (parsedLogs.length === 0) {
+      return res.status(500).json({ message: 'FixedProductMarketMakerCreation event not found' });
+    }
+    const fixedProductMarketMakerAddress = parsedLogs[0].args.fixedProductMarketMaker;
     console.log('FixedProductMarketMaker Address:', fixedProductMarketMakerAddress);
+    console.log('Wrong In advance FixedProductMarketMaker Address:', fixedProductMarketMakerAddressCalc);
     newLiveMarket.marketAddress = fixedProductMarketMakerAddress;
 
     await LiveMarket.deleteMany();

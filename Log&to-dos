@@ -214,6 +214,9 @@ user then must be allowed to redeem multiple times to get back the erc-20 for th
 ### Day71:
 **Today's Progress**: not sure why but the erc-20 token flows aren't happening as expected. Annoying
 
+### Day72:
+**Today's Progress**: found the issue. My getCreate2Address() function was spitting out an icorrect address for the prediction market. For now I just reverted to finding the prediction market address retroactively once deployed. Will pick up the create2 function bug once further along... but glad I have things working end to end with postman now
+
 TO DO IDEAS:
 Essentials for Later Development
 Persistent Data Storage:

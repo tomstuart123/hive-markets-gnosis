@@ -17,16 +17,15 @@ const tokenAddress = process.env.TOKEN_CONTRACT_ADDRESS;
 // const conditionalTokensAddress = contractAddresses.ConditionalTokens;
 // const tokenAddress =contractAddresses.ERC20Token;
 
-// const FPMMDeterministicFactoryArtifact = require('@gnosis.pm/conditional-tokens-market-makers/build/contracts/FPMMDeterministicFactory.json');
-// const FixedProductMarketMakerArtifact = require('@gnosis.pm/conditional-tokens-market-makers/build/contracts/FixedProductMarketMaker.json');
-// const ConditionalTokensArtifact = require('@gnosis.pm/conditional-tokens-contracts/build/contracts/ConditionalTokens.json');
-// const { abi: ERC20Abi } = require('@gnosis.pm/conditional-tokens-contracts/build/contracts/IERC20.json');
-// const { abi: ERC20Abi } = require('@openzeppelin/contracts/build/contracts/IERC20.json');
+const FPMMDeterministicFactoryArtifact = require('@gnosis.pm/conditional-tokens-market-makers/build/contracts/FPMMDeterministicFactory.json');
+const FixedProductMarketMakerArtifact = require('@gnosis.pm/conditional-tokens-market-makers/build/contracts/FixedProductMarketMaker.json');
+const ConditionalTokensArtifact = require('@gnosis.pm/conditional-tokens-contracts/build/contracts/ConditionalTokens.json');
+const { abi: ERC20Abi } = require('@gnosis.pm/conditional-tokens-contracts/build/contracts/IERC20.json');
 
-const FPMMDeterministicFactoryArtifact = require('../artifacts/contracts/FPMMDeterministicFactory.sol/FPMMDeterministicFactory.json');
-const FixedProductMarketMakerArtifact = require('../artifacts/@gnosis.pm/conditional-tokens-market-makers/contracts/FixedProductMarketMaker.sol/FixedProductMarketMaker.json');
-const ConditionalTokensArtifact = require('../artifacts/@gnosis.pm/conditional-tokens-contracts/contracts/ConditionalTokens.sol/ConditionalTokens.json');
-const { abi: ERC20Abi } = require('../artifacts/openzeppelin-solidity/contracts/token/ERC20/IERC20.sol/IERC20.json');
+// const FPMMDeterministicFactoryArtifact = require('../artifacts/contracts/FPMMDeterministicFactory.sol/FPMMDeterministicFactory.json');
+// const FixedProductMarketMakerArtifact = require('../artifacts/@gnosis.pm/conditional-tokens-market-makers/contracts/FixedProductMarketMaker.sol/FixedProductMarketMaker.json');
+// const ConditionalTokensArtifact = require('../artifacts/@gnosis.pm/conditional-tokens-contracts/contracts/ConditionalTokens.sol/ConditionalTokens.json');
+// const { abi: ERC20Abi } = require('../artifacts/openzeppelin-solidity/contracts/token/ERC20/IERC20.sol/IERC20.json');
 
 
 const factory = new ethers.Contract(factoryAddress, FPMMDeterministicFactoryArtifact.abi, wallet);
@@ -67,23 +66,25 @@ const runTests = async () => {
     const conditionId = await conditionalTokens.getConditionId(oracle, questionId, outcomeSlotCount);
     console.log("Condition ID:", conditionId);
 
-    // Generate the salt
+      // Generate the salt
     const saltNonce = Math.floor(Math.random() * 10000);
 
+    // Calculate the keccak256 hash of the bytecode
+    const bytecodeHash = ethers.keccak256(FPMMDeterministicFactoryArtifact.bytecode);
+    console.log('Bytecode hash:', bytecodeHash);
+
+    // Calculate the solidity packed keccak256 hash of the salt
+    const saltHash = ethers.solidityPackedKeccak256(["uint256"], [saltNonce]);
+    console.log('Salt hash:', saltHash);
+
     // Calculate the deterministic address
-    const fixedProductMarketMakerAddress = ethers.getCreate2Address(
-      factoryAddress,
-      ethers.solidityPackedKeccak256(["uint256"], [saltNonce]),
-      ethers.keccak256(FPMMDeterministicFactoryArtifact.bytecode)
+    const fixedProductMarketMakerAddressCalc = ethers.getCreate2Address(
+        factoryAddress,
+        saltHash,
+        bytecodeHash
     );
 
-    console.log("Calculated FixedProductMarketMaker address:", fixedProductMarketMakerAddress);
-    console.log('nonce',saltNonce);
-    console.log('conditionaladd',conditionalTokensAddress);
-    console.log('tokenadd',tokenAddress);
-    console.log('conditionid',conditionId);
-    console.log('fee',fee);
-    console.log('collateralAmount',collateralAmount);
+    console.log("Calculated FixedProductMarketMaker address:", fixedProductMarketMakerAddressCalc);
 
     // Create Fixed Product Market Maker
     const createMarketTx = await factory.create2FixedProductMarketMaker(
@@ -95,9 +96,27 @@ const runTests = async () => {
       collateralAmount,
       []
     );
-    // const createMarketReceipt = await createMarketTx.wait();
+    const createMarketReceipt = await createMarketTx.wait();
     console.log(createMarketTx)
-    console.log("FixedProductMarketMaker created at:", fixedProductMarketMakerAddress);
+
+    // Parse the logs to find the FixedProductMarketMakerCreation event
+    const iface = new ethers.Interface(FPMMDeterministicFactoryArtifact.abi);
+    const parsedLogs = createMarketReceipt.logs
+      .map(log => {
+        try {
+          return iface.parseLog(log);
+        } catch (e) {
+          return null;
+        }
+      })
+      .filter(log => log && log.name === 'FixedProductMarketMakerCreation');
+
+    if (parsedLogs.length === 0) {
+      throw new Error('FixedProductMarketMakerCreation event not found');
+    }
+    const fixedProductMarketMakerAddress = parsedLogs[0].args.fixedProductMarketMaker;
+    console.log("Real FixedProductMarketMaker created at:", fixedProductMarketMakerAddress);
+    console.log("Wrong estimate FixedProductMarketMaker created at:", fixedProductMarketMakerAddressCalc);
 
 
     // create contract instance at this event
@@ -111,6 +130,8 @@ const runTests = async () => {
     await approveTx3.wait();
     console.log("Collateral tokens approved for user:", approvedAmount);
 
+
+
     // Check token amounts
     const preLiquidity = await collateralToken.balanceOf(wallet.address);
     console.log("ERC-20 Balance Pre Liquidity:", ethers.formatUnits(preLiquidity, 18));
@@ -119,9 +140,20 @@ const runTests = async () => {
     // const preLiquidityOutcomes = await conditionalTokens.balanceOf(wallet.address, positionIdPre);
     // console.log("Balance of ERC1155 outcome tokens before liquidity:", ethers.formatUnits(preLiquidityOutcomes, 18));
 
-      // Call the collectedFees function and log the result
-const collectedFees = await fixedProductMarketMaker.collectedFees();
-console.log("Collected Fees:", ethers.formatUnits(collectedFees, 18));
+
+    // Fetch and display collected fees
+     const collectedFees = await fixedProductMarketMaker.collectedFees();
+     console.log("Collected Fees:", ethers.formatUnits(collectedFees, 18));
+
+    // // Call calcBuyAmount
+    const investmentAmount = ethers.parseUnits("1", 18);
+    const buyAmount = await fixedProductMarketMaker.calcBuyAmount(investmentAmount, outcomeIndex);
+    console.log("Buy Amount for investment:", ethers.formatUnits(buyAmount, 18));
+
+    //  // Call feesWithdrawableBy
+     const feesWithdrawable = await fixedProductMarketMaker.feesWithdrawableBy(wallet.address);
+     console.log("Fees Withdrawable by user:", ethers.formatUnits(feesWithdrawable, 18));
+
 
     // Add liquidity
     const addLiquidityTx = await fixedProductMarketMaker.addFunding(collateralAmount, []);
@@ -142,6 +174,9 @@ console.log("Collected Fees:", ethers.formatUnits(collectedFees, 18));
     await buyOutcomeTx.wait();
     console.log(`Outcome shares bought :`, buyOutcomeTx.hash);
 
+    const fees = await fixedProductMarketMaker.fee();
+    console.log("Market fee:", ethers.formatUnits(fees, 18));
+      
     // Check token amounts
     const postBuy = await collateralToken.balanceOf(wallet.address);
     console.log("ERC-20 Balance After Buy:", ethers.formatUnits(postBuy, 18));
